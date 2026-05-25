@@ -1,0 +1,52 @@
+# ---- Secrets / env ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ---- OS / editor ----
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ---- Go (backend, telegram-bot) ----
+bin/
+*.exe
+*.out
+*.test
+coverage.out
+coverage.html
+
+# ---- Node / React (frontend) + JS web3 tooling ----
+node_modules/
+dist/
+build/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Solidity (web3: Hardhat / Foundry) ----
+artifacts/
+cache/
+typechain/
+typechain-types/
+out/
+broadcast/
+deployments/local/
+
+# ---- Android / Kotlin (android-app) ----
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+.gradle/
+android-app/build/
+android-app/app/build/
+captures/
+.cxx/
