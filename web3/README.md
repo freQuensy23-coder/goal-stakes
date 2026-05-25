@@ -1,0 +1,99 @@
+# web3 — StakeEnforcer
+
+A single Foundry contract, `StakeEnforcer`, that forfeits a user's staked ERC20 by
+pulling it from their allowance and **burning** it.
+
+## What it guarantees
+
+- **Burn-only destination (IV1).** Forfeited funds can *only* ever go to the hardcoded
+  burn address. The destination is a compile-time `constant` — there is no setter, no
+  parameter, no code path that can redirect a penalty anywhere else.
+- **No custody (IV2).** A penalty is a single `transferFrom(user → BURN)` bounded by the
+  user's current allowance. The contract never holds a token balance between calls.
+- **Burn address (AS2).** `BURN = 0x000000000000000000000000000000000000dEaD` — an
+  unrecoverable dead address. **Not** `0x0` (USDC reverts transfers to the zero address).
+- **USDT-safe (UK4).** Transfers go through a SafeERC20-style low-level call that treats
+  *empty return data* as success and only decodes a bool when return data is present, so
+  non-standard tokens like USDT (whose `transferFrom` returns no bool) work correctly. A
+  token that returns `false` causes a revert (fail fast).
+
+## Layout
+
+```
+web3/
+  foundry.toml
+  src/StakeEnforcer.sol         # the contract (+ minimal inline IERC20, _safeTransferFrom)
+  test/StakeEnforcer.t.sol      # Foundry tests
+  test/mocks/                   # MockERC20 (standard), MockUSDT (no bool), MockReturnsFalseERC20
+  script/Deploy.s.sol           # testnet deploy script (reads env)
+  abi/StakeEnforcer.json        # exported ABI for backend abigen (IF1) — COMMITTED
+  lib/forge-std/                # vendored test dep — GITIGNORED, see below
+```
+
+## Dependencies
+
+This project has **no Solidity package dependencies** — `IERC20` and the SafeERC20-style
+`_safeTransferFrom` helper are inlined in `src/StakeEnforcer.sol`.
+
+The only build/test dependency is `forge-std`, which is **vendored as plain files** under
+`lib/forge-std/` (not a git submodule). `web3/lib/` is gitignored, so a fresh clone must
+re-vendor it:
+
+```sh
+git clone --depth 1 https://github.com/foundry-rs/forge-std web3/lib/forge-std
+rm -rf web3/lib/forge-std/.git
+```
+
+## Build & test
+
+From `web3/`:
+
+```sh
+forge build
+forge test -vvv
+```
+
+## Export ABI (IF1)
+
+The committed `abi/StakeEnforcer.json` is consumed by the backend's abigen. Regenerate it
+after any change to the contract's external surface:
+
+```sh
+forge inspect StakeEnforcer abi --json > abi/StakeEnforcer.json
+```
+
+## Deploy (testnet-first — PC1)
+
+The deploy script reads the deployer key and the initial enforcer address from the
+environment. **Never hardcode keys or mainnet addresses.**
+
+Required env:
+
+| Variable          | Meaning                                            |
+| ----------------- | -------------------------------------------------- |
+| `PRIVATE_KEY`     | deployer private key (hex). Keep out of git.       |
+| `ENFORCER_ADDR`   | initial enforcer (backend signer) address.         |
+| `SEPOLIA_RPC_URL` | Sepolia RPC endpoint.                              |
+| `AMOY_RPC_URL`    | Polygon Amoy RPC endpoint.                         |
+
+Deploy to **Sepolia**:
+
+```sh
+forge script script/Deploy.s.sol:Deploy --rpc-url "$SEPOLIA_RPC_URL" --broadcast
+```
+
+Deploy to **Polygon Amoy**:
+
+```sh
+forge script script/Deploy.s.sol:Deploy --rpc-url "$AMOY_RPC_URL" --broadcast
+```
+
+The script logs the deployed contract address, the configured enforcer, and the (immutable)
+burn destination.
+
+## Usage
+
+1. The user `approve`s the `StakeEnforcer` contract for the stake amount on the staked token.
+2. To forfeit, the **enforcer** calls `penalize(user, token, amount)`. The contract pulls
+   exactly `amount` from the user straight to `BURN` and emits `Penalized`.
+3. The owner can rotate the enforcer via `setEnforcer(newEnforcer)` (emits `EnforcerChanged`).
