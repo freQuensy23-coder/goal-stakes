@@ -4,12 +4,14 @@ pragma solidity 0.8.24;
 import {Script, console2} from "forge-std/Script.sol";
 import {StakeEnforcer} from "../src/StakeEnforcer.sol";
 
-/// @notice Deploys StakeEnforcer to a testnet (PC1 — testnet-first).
+/// @notice Deploys StakeEnforcer to any configured EVM chain.
 /// Reads the deployer key and the initial enforcer address from the environment;
-/// nothing is hardcoded (PC1, GPC1). Run with an explicit RPC for Sepolia or Amoy:
+/// nothing is hardcoded (GPC1). Run with an explicit RPC for the target chain:
 ///
 ///   forge script script/Deploy.s.sol:Deploy --rpc-url $SEPOLIA_RPC_URL --broadcast
 ///   forge script script/Deploy.s.sol:Deploy --rpc-url $AMOY_RPC_URL --broadcast
+///   forge script script/Deploy.s.sol:Deploy --rpc-url $ETHEREUM_RPC_URL --broadcast
+///   forge script script/Deploy.s.sol:Deploy --rpc-url $POLYGON_RPC_URL --broadcast
 ///
 /// Required env:
 ///   PRIVATE_KEY   - deployer private key (hex). Never commit this.

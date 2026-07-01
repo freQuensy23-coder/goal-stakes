@@ -62,19 +62,19 @@ after any change to the contract's external surface:
 forge inspect StakeEnforcer abi --json > abi/StakeEnforcer.json
 ```
 
-## Deploy (testnet-first — PC1)
+## Deploy
 
 The deploy script reads the deployer key and the initial enforcer address from the
 environment. **Never hardcode keys or mainnet addresses.**
 
 Required env:
 
-| Variable          | Meaning                                            |
-| ----------------- | -------------------------------------------------- |
-| `PRIVATE_KEY`     | deployer private key (hex). Keep out of git.       |
-| `ENFORCER_ADDR`   | initial enforcer (backend signer) address.         |
-| `SEPOLIA_RPC_URL` | Sepolia RPC endpoint.                              |
-| `AMOY_RPC_URL`    | Polygon Amoy RPC endpoint.                         |
+- `PRIVATE_KEY`: deployer private key. Keep out of git.
+- `ENFORCER_ADDR`: initial enforcer, derived from the backend `ENFORCER_PRIVATE_KEY`.
+- `SEPOLIA_RPC_URL`: Sepolia RPC endpoint.
+- `AMOY_RPC_URL`: Polygon Amoy RPC endpoint.
+- `ETHEREUM_RPC_URL`: Ethereum mainnet RPC endpoint.
+- `POLYGON_RPC_URL`: Polygon PoS mainnet RPC endpoint.
 
 Deploy to **Sepolia**:
 
@@ -88,8 +88,55 @@ Deploy to **Polygon Amoy**:
 forge script script/Deploy.s.sol:Deploy --rpc-url "$AMOY_RPC_URL" --broadcast
 ```
 
+Deploy to **Ethereum mainnet**:
+
+```sh
+forge script script/Deploy.s.sol:Deploy --rpc-url "$ETHEREUM_RPC_URL" --broadcast
+```
+
+Deploy to **Polygon mainnet**:
+
+```sh
+forge script script/Deploy.s.sol:Deploy --rpc-url "$POLYGON_RPC_URL" --broadcast
+```
+
 The script logs the deployed contract address, the configured enforcer, and the (immutable)
-burn destination.
+burn destination. Put the two mainnet contract addresses into `.env.mainnet.example` before
+real users approve USDC or USDT. Backend startup with `ENFORCER_PRIVATE_KEY` set will fail
+unless the configured contract reports `BURN() = 0x000000000000000000000000000000000000dEaD`
+and `enforcer() = ENFORCER_ADDR`.
+
+After deploying both mainnet contracts, verify the backend handoff before opening the app
+to real approvals:
+
+```sh
+export ETHEREUM_STAKE_ENFORCER_ADDRESS=0x...
+export POLYGON_STAKE_ENFORCER_ADDRESS=0x...
+export ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/<key>
+export POLYGON_RPC_URL=https://polygon-mainnet.infura.io/v3/<key>
+export ENFORCER_PRIVATE_KEY=0x...
+scripts/verify-mainnet-deploy.sh
+```
+
+The live e2e wrapper consumes the same deployment addresses from `.env.mainnet.local`:
+
+```sh
+scripts/e2e-live-mainnet.sh shape
+ENV_FILE=.env.mainnet.local scripts/e2e-live-mainnet.sh preflight
+ENV_FILE=.env.mainnet.local LIVE_E2E_CONFIRM=burn-real-funds scripts/e2e-live-mainnet.sh burn
+```
+
+`burn` is destructive: it starts the Go API with live config, requires a prior MetaMask
+approval from `LIVE_E2E_USER_WALLET`, creates and reports the test goal through the
+public API, and calls `StakeEnforcer.penalize` for `LIVE_E2E_AMOUNT`.
+
+For a local shape check without RPC calls:
+
+```sh
+ETHEREUM_STAKE_ENFORCER_ADDRESS=0x1111111111111111111111111111111111111111 \
+POLYGON_STAKE_ENFORCER_ADDRESS=0x2222222222222222222222222222222222222222 \
+scripts/verify-mainnet-deploy.sh --dry-run
+```
 
 ## Usage
 

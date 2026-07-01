@@ -1,0 +1,25 @@
+# Local dev/verify stack for the goal-stakes backend (AS5).
+#   docker compose up -d           # Postgres
+#   DATABASE_URL=postgres://goalstakes:goalstakes@localhost:5433/goalstakes?sslmode=disable
+#
+# Host port 5433 is used to avoid clashing with a local 5432. The backend
+# applies embedded migrations on startup.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: goalstakes
+      POSTGRES_PASSWORD: goalstakes
+      POSTGRES_DB: goalstakes
+    ports:
+      - "5433:5432"
+    volumes:
+      - goalstakes_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goalstakes -d goalstakes"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  goalstakes_pgdata:

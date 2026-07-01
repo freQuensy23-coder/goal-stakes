@@ -7,13 +7,18 @@ script = "script"
 solc = "0.8.24"
 optimizer = true
 optimizer_runs = 200
+evm_version = "paris"
 
 remappings = [
     "forge-std/=lib/forge-std/src/",
 ]
 
-# RPC endpoints read from env (PC1 — testnet-first, never hardcode keys/mainnet).
-# Example: SEPOLIA_RPC_URL=... AMOY_RPC_URL=... forge script ...
+# RPC endpoints read from env; never hardcode keys or endpoints.
+# Examples:
+#   forge script script/Deploy.s.sol:Deploy --rpc-url "$SEPOLIA_RPC_URL" --broadcast
+#   forge script script/Deploy.s.sol:Deploy --rpc-url "$ETHEREUM_RPC_URL" --broadcast
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
 amoy = "${AMOY_RPC_URL}"
+ethereum = "${ETHEREUM_RPC_URL}"
+polygon = "${POLYGON_RPC_URL}"
