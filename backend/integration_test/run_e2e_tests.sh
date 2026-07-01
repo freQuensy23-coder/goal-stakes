@@ -3,8 +3,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EVIDENCE_DIR="$ROOT/.e2e/backend-admin"
+API_BIN="$EVIDENCE_DIR/api.bin"
 mkdir -p "$EVIDENCE_DIR"
-rm -f "$EVIDENCE_DIR"/*.log "$EVIDENCE_DIR"/*.json "$EVIDENCE_DIR"/*.txt
+rm -f "$EVIDENCE_DIR"/*.log "$EVIDENCE_DIR"/*.json "$EVIDENCE_DIR"/*.txt "$API_BIN"
 
 # shellcheck source=../../scripts/lib/test_support.sh
 source "$ROOT/scripts/lib/test_support.sh"
@@ -71,8 +72,7 @@ expect_startup_failure() {
   shift 2
   local log="$EVIDENCE_DIR/${name}.log"
   (
-    cd "$ROOT/backend"
-    env -i PATH="$PATH" HOME="$HOME" GOCACHE="${GOCACHE:-$ROOT/.cache/go-build}" "$@" go run ./cmd/api
+    env -i PATH="$PATH" HOME="$HOME" "$@" "$API_BIN"
   ) >"$log" 2>&1 &
   local pid=$!
   for _ in {1..80}; do
@@ -113,6 +113,9 @@ API_BASE="http://127.0.0.1:${API_PORT}"
 echo "== backend dependency warmup =="
 (cd "$ROOT/backend" && go mod download)
 
+echo "== backend binary build =="
+(cd "$ROOT/backend" && go build -o "$API_BIN" ./cmd/api)
+
 echo "== backend admin services =="
 (cd "$ROOT" && docker compose up -d)
 for i in {1..40}; do
@@ -142,7 +145,7 @@ echo "== backend valid startup =="
   ENFORCER_PRIVATE_KEY="" \
   ALLOW_DISABLED_ENFORCER="" \
   CHAINS_JSON="$CHAIN_JSON" \
-  go run ./cmd/api
+  "$API_BIN"
 ) >"$EVIDENCE_DIR/api.log" 2>&1 &
 API_PID=$!
 

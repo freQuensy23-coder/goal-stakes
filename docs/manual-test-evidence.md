@@ -841,19 +841,31 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Date/time: 2026-07-01 12:31 IDT
 - Workspace: `/Users/a.mametyev/PycharmProjects/target-app`
 - Branch: `main`
-- Commit: pending local commit
+- Commit under test: follow-up to failed GitHub Actions run `28507913516` on `6dc11df`
 - Environment: local Docker Postgres, Foundry fork-local RPC defaults, Android emulator `twinby_mitm`
 - Tester/agent: Codex
 
 ### Commands
 
+- Command: `gh run view 28507913516 --json databaseId,url,status,conclusion,headSha,displayTitle,workflowName,jobs`
+- Result: fail, root cause recorded before local fix
+- Relevant output: `unit` and `integration` jobs failed for `6dc11df`.
+
+- Command: `gh run view 28507913516 --log-failed | rg -n "Minimum supported Gradle|Current version|missing-jwt startup kept running|expected failure|FAIL|Error"`
+- Result: fail, root cause recorded before local fix
+- Relevant output: unit job used Gradle `9.1.0` while the Android plugin requires at least `9.3.1`; integration job reported `missing-jwt startup kept running; expected failure`.
+
 - Command: `bash -n scripts/lib/test_support.sh scripts/run_unit_tests.sh integrations_tests/run_e2e_tests.sh backend/integration_test/run_e2e_tests.sh web3/integration_test/run_e2e_tests.sh scripts/live_mainnet_gate.sh`
 - Result: pass
 - Relevant output: shell syntax passed for changed runners and helper.
 
-- Command: `git diff --cached --check`
+- Command: `git diff --check`
 - Result: pass
 - Relevant output: no whitespace errors.
+
+- Command: `backend/integration_test/run_e2e_tests.sh`
+- Result: pass after backend runner fix
+- Relevant output: backend admin startup guards now run against a prebuilt API binary, so CI cold Go compilation cannot hide the expected negative startup failures.
 
 - Command: `scripts/run_unit_tests.sh`
 - Result: pass
@@ -886,12 +898,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 ### Checklist Results
 
 - CI workflow root cause fixed: `forge-std` is a tracked submodule and GitHub checkout uses recursive submodules.
-- CI integration timeout fixed: backend e2e warms Go modules before starting API and waits longer for readiness.
+- CI unit root cause fixed: workflow now uses Gradle `9.4.1`, above the Android plugin minimum of `9.3.1`.
+- CI integration root cause fixed: backend e2e builds one API binary before startup checks and uses it for both valid startup and negative guards.
 - Env examples cleaned: only `.env.example` remains; live/mainnet values use `.env.mainnet.local`.
 - Manual checklist cleaned: authoritative checklist lives in `docs/manual-test-checklist.md`; root legacy redirect file removed.
-
-### Unrun Checks
-
-- Check: GitHub Actions result for this commit
-- Reason: requires push first
-- Required follow-up: push commit, then inspect the new `tests` workflow until it completes.
