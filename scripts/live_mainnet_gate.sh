@@ -89,7 +89,7 @@ flush_env_errors() {
 load_env_file() {
   if [[ ! -f "$ENV_FILE" ]]; then
     echo "missing env file: $ENV_FILE" >&2
-    echo "create it from .env.mainnet.example and keep real secrets there" >&2
+    echo "create it from .env.example and keep real secrets there" >&2
     exit 1
   fi
   set -a

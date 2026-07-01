@@ -653,4 +653,4 @@ sequenceDiagram
 - Web3 acceptance includes `web3/integration_test/run_e2e_tests.sh`, which forks Ethereum and Polygon and tests real canonical USDC/USDT contracts.
 - Mainnet burn is tested only with an explicit sacrificial-wallet plan.
 
-Use [manual_checklist.md](manual_checklist.md) and [docs/manual-test-checklist.md](docs/manual-test-checklist.md). Record evidence in [docs/manual-test-evidence.md](docs/manual-test-evidence.md).
+Use [docs/manual-test-checklist.md](docs/manual-test-checklist.md). Record evidence in [docs/manual-test-evidence.md](docs/manual-test-evidence.md).

@@ -102,6 +102,12 @@ go run ./cmd/telegram-bot
 
 ## Web3
 
+Install submodules after a fresh clone:
+
+```bash
+git submodule update --init --recursive web3/lib/forge-std
+```
+
 Run contract tests:
 
 ```bash

@@ -2,7 +2,6 @@
 .env
 .env.*
 !.env.example
-!.env.mainnet.example
 *.pem
 *.key
 secrets/
@@ -42,7 +41,8 @@ typechain-types/
 out/
 broadcast/
 deployments/local/
-web3/lib/
+web3/lib/*
+!web3/lib/forge-std
 web3/cache/
 web3/out/
 

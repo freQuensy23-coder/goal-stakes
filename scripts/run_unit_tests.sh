@@ -3,6 +3,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# shellcheck source=lib/test_support.sh
+source "$ROOT/scripts/lib/test_support.sh"
+
 echo "== test layout guard =="
 bad_locations="$(
   find "$ROOT" \
@@ -32,6 +35,7 @@ echo "== frontend unit tests and build =="
 (cd "$ROOT/frontend" && npm test && npm run build)
 
 echo "== web3 unit tests =="
+ensure_forge_std "$ROOT"
 (cd "$ROOT/web3" && forge build && forge test)
 
 echo "== android unit tests and build =="

@@ -6,6 +6,10 @@ EVIDENCE_DIR="$ROOT/.e2e/backend-admin"
 mkdir -p "$EVIDENCE_DIR"
 rm -f "$EVIDENCE_DIR"/*.log "$EVIDENCE_DIR"/*.json "$EVIDENCE_DIR"/*.txt
 
+# shellcheck source=../../scripts/lib/test_support.sh
+source "$ROOT/scripts/lib/test_support.sh"
+ensure_forge_std "$ROOT"
+
 API_PID=""
 cleanup() {
   if [[ -n "$API_PID" ]] && kill -0 "$API_PID" >/dev/null 2>&1; then
@@ -106,6 +110,9 @@ DATABASE_URL="${DATABASE_URL:-postgres://goalstakes:goalstakes@localhost:5433/go
 API_PORT="$(free_port)"
 API_BASE="http://127.0.0.1:${API_PORT}"
 
+echo "== backend dependency warmup =="
+(cd "$ROOT/backend" && go mod download)
+
 echo "== backend admin services =="
 (cd "$ROOT" && docker compose up -d)
 for i in {1..40}; do
@@ -139,7 +146,7 @@ echo "== backend valid startup =="
 ) >"$EVIDENCE_DIR/api.log" 2>&1 &
 API_PID=$!
 
-for i in {1..80}; do
+for i in {1..240}; do
   if curl -fsS "$API_BASE/api/v1/chains" >"$EVIDENCE_DIR/chains.json" 2>/dev/null; then
     break
   fi
@@ -148,7 +155,7 @@ for i in {1..80}; do
     cat "$EVIDENCE_DIR/api.log" >&2 || true
     exit 1
   fi
-  if [[ "$i" == "80" ]]; then
+  if [[ "$i" == "240" ]]; then
     echo "backend did not become ready" >&2
     cat "$EVIDENCE_DIR/api.log" >&2 || true
     exit 1

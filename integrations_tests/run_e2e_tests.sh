@@ -3,6 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# shellcheck source=../scripts/lib/test_support.sh
+source "$ROOT/scripts/lib/test_support.sh"
+ensure_forge_std "$ROOT"
+
 echo "== shared services =="
 (cd "$ROOT" && docker compose up -d)
 for i in {1..40}; do

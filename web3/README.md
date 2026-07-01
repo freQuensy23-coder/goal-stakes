@@ -28,21 +28,18 @@ web3/
   integration_test/             # fork-local real-token checks + runner
   script/Deploy.s.sol           # testnet deploy script (reads env)
   abi/StakeEnforcer.json        # exported ABI for backend abigen (IF1) — COMMITTED
-  lib/forge-std/                # vendored test dep — GITIGNORED, see below
+  lib/forge-std/                # Foundry test dependency submodule
 ```
 
 ## Dependencies
 
-This project has **no Solidity package dependencies** — `IERC20` and the SafeERC20-style
-`_safeTransferFrom` helper are inlined in `src/StakeEnforcer.sol`.
+This project has **no production Solidity package dependencies** — `IERC20` and the
+SafeERC20-style `_safeTransferFrom` helper are inlined in `src/StakeEnforcer.sol`.
 
-The only build/test dependency is `forge-std`, which is **vendored as plain files** under
-`lib/forge-std/` (not a git submodule). `web3/lib/` is gitignored, so a fresh clone must
-re-vendor it:
+The only build/test dependency is `forge-std`, tracked as a git submodule:
 
 ```sh
-git clone --depth 1 https://github.com/foundry-rs/forge-std web3/lib/forge-std
-rm -rf web3/lib/forge-std/.git
+git submodule update --init --recursive web3/lib/forge-std
 ```
 
 ## Build & test
@@ -118,10 +115,10 @@ forge script script/Deploy.s.sol:Deploy --rpc-url "$POLYGON_RPC_URL" --broadcast
 ```
 
 The script logs the deployed contract address, the configured enforcer, and the (immutable)
-burn destination. Put the two mainnet contract addresses into `.env.mainnet.example` before
-real users approve USDC or USDT. Backend startup with `ENFORCER_PRIVATE_KEY` set will fail
-unless the configured contract reports `BURN() = 0x000000000000000000000000000000000000dEaD`
-and `enforcer() = ENFORCER_ADDR`.
+burn destination. Put the two mainnet contract addresses into `.env.mainnet.local` before real
+users approve USDC or USDT. Backend startup with `ENFORCER_PRIVATE_KEY` set will fail unless
+the configured contract reports `BURN() = 0x000000000000000000000000000000000000dEaD` and
+`enforcer() = ENFORCER_ADDR`.
 
 After deploying both mainnet contracts, verify the backend handoff before opening the app
 to real approvals:

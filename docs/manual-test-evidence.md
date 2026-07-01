@@ -833,3 +833,65 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Reason: destructive and still requires a written sacrificial-wallet plan plus real `.env.mainnet.local` secrets
 - Risk: deployed-provider or funded-wallet issues could appear only in live mainnet execution
 - Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence
+
+## 2026-07-01 CI And Docs Cleanup
+
+### Run Context
+
+- Date/time: 2026-07-01 12:31 IDT
+- Workspace: `/Users/a.mametyev/PycharmProjects/target-app`
+- Branch: `main`
+- Commit: pending local commit
+- Environment: local Docker Postgres, Foundry fork-local RPC defaults, Android emulator `twinby_mitm`
+- Tester/agent: Codex
+
+### Commands
+
+- Command: `bash -n scripts/lib/test_support.sh scripts/run_unit_tests.sh integrations_tests/run_e2e_tests.sh backend/integration_test/run_e2e_tests.sh web3/integration_test/run_e2e_tests.sh scripts/live_mainnet_gate.sh`
+- Result: pass
+- Relevant output: shell syntax passed for changed runners and helper.
+
+- Command: `git diff --cached --check`
+- Result: pass
+- Relevant output: no whitespace errors.
+
+- Command: `scripts/run_unit_tests.sh`
+- Result: pass
+- Relevant output: backend, frontend, Web3, Android JVM/build, and Telegram unit suites passed; test layout guard passed.
+
+- Command: `integrations_tests/run_e2e_tests.sh`
+- Result: pass
+- Relevant output: backend e2e passed; Web3 fork-local real-token checks passed 4/4; web wallet/API/AI e2e passed; Telegram bot e2e passed; own-agent cron e2e passed; mainnet gate shape passed; Android emulator e2e passed; secret scan passed.
+
+- Command: `rg -n "\.env\.mainnet\.example|manual_checklist\.md|manual checklist\.md" -S . .github`
+- Result: pass
+- Relevant output: no references to removed legacy docs/env files.
+
+- Command: `find scripts -maxdepth 1 -type f -name 'e2e-*' -print`
+- Result: pass
+- Relevant output: no ad-hoc root e2e scripts.
+
+- Command: `git submodule status --recursive`
+- Result: pass
+- Relevant output: `web3/lib/forge-std` pinned to `620536f... (v1.16.1)`.
+
+### Screenshot Review
+
+- Opened: all PNG files under `.e2e/android-emulator/`
+- Result: pass; Goals, Chat, Settings, own-agent, invalid URL, portrait, and landscape screens are readable with no blank screen or obvious control overlap.
+
+- Opened: all PNG files under `.e2e/manual-web/`
+- Result: pass; landing, wallet rejection, approval, approval revert, chat, voice, goals, settings, API key, own-agent, and Telegram link states render correctly on desktop and mobile.
+
+### Checklist Results
+
+- CI workflow root cause fixed: `forge-std` is a tracked submodule and GitHub checkout uses recursive submodules.
+- CI integration timeout fixed: backend e2e warms Go modules before starting API and waits longer for readiness.
+- Env examples cleaned: only `.env.example` remains; live/mainnet values use `.env.mainnet.local`.
+- Manual checklist cleaned: authoritative checklist lives in `docs/manual-test-checklist.md`; root legacy redirect file removed.
+
+### Unrun Checks
+
+- Check: GitHub Actions result for this commit
+- Reason: requires push first
+- Required follow-up: push commit, then inspect the new `tests` workflow until it completes.

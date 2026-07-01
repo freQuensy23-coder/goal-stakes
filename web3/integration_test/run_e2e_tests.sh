@@ -3,6 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# shellcheck source=../../scripts/lib/test_support.sh
+source "$ROOT/scripts/lib/test_support.sh"
+ensure_forge_std "$ROOT"
+
 # Public RPC defaults keep this check runnable without committing provider keys.
 # Override with private endpoints when available:
 #   ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... web3/integration_test/run_e2e_tests.sh

@@ -24,11 +24,12 @@ Use separate reviewers or subagents when possible:
 ## Setup
 
 1. Run `git status --short --branch` and record it.
-2. Copy `.env.example` to `.env` if needed.
-3. Export env with `set -a; source .env; set +a`.
-4. Start Postgres with `docker compose up -d`.
-5. Confirm Postgres with `docker compose exec -T postgres pg_isready -U goalstakes -d goalstakes`.
-6. Confirm local tools:
+2. Initialize submodules with `git submodule update --init --recursive web3/lib/forge-std`.
+3. Copy `.env.example` to `.env` if needed.
+4. Export env with `set -a; source .env; set +a`.
+5. Start Postgres with `docker compose up -d`.
+6. Confirm Postgres with `docker compose exec -T postgres pg_isready -U goalstakes -d goalstakes`.
+7. Confirm local tools:
 
 ```bash
 go version
