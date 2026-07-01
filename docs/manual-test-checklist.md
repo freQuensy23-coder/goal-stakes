@@ -68,15 +68,28 @@ npm run build
 
 ### Web3
 
-1. Run:
+1. Run fast contract unit tests without fork-only tests:
 
 ```bash
 cd web3
 forge build
-forge test
+forge test --no-match-path test/StakeEnforcerFork.t.sol
 ```
 
 2. Confirm tests prove burn-only transfer, no custody, enforcer-only penalties, allowance failure, USDT-like behavior, false-return token failure, and ABI sync.
+3. Run fork-local real token checks from the repo root:
+
+```bash
+scripts/e2e-web3-fork.sh
+```
+
+4. Confirm the fork-local suite passes all four canonical token cases: Ethereum USDC, Ethereum USDT, Polygon USDC, and Polygon USDT.
+5. Confirm the test output shows real fork RPC URLs and `0 failed`; do not accept mock-only, `SimulatedBackend`-only, or skipped fork output as Web3 acceptance.
+6. If public RPC defaults are unavailable, rerun with real provider endpoints:
+
+```bash
+ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... scripts/e2e-web3-fork.sh
+```
 
 ### Android
 
@@ -108,7 +121,7 @@ go test ./...
 scripts/e2e-local.sh
 ```
 
-2. Confirm it runs backend, frontend, web3, Android JVM, Telegram, browser wallet, API, AI, and secret-scan checks.
+2. Confirm it runs backend, frontend, web3 unit tests, web3 fork-local real token checks, Android JVM, Telegram, browser wallet, API, AI, and secret-scan checks.
 3. Confirm `.e2e/manual-web/` contains current desktop and mobile screenshots.
 4. If any step fails, fix the root cause and rerun the full suite.
 
@@ -249,6 +262,7 @@ node scripts/e2e-telegram-bot.mjs
 7. Report avoid-goal slip twice.
 8. Confirm both reports create separate visible violations.
 9. Confirm no penalty transfers to app, admin, treasury, or user-controlled destination.
+10. Confirm `scripts/e2e-web3-fork.sh` proves `StakeEnforcer.penalize` works against real forked USDC/USDT contracts on Ethereum and Polygon, not only mocks.
 
 ## Security Checks
 
@@ -268,7 +282,7 @@ node scripts/e2e-telegram-bot.mjs
 scripts/e2e-live-mainnet.sh shape
 ```
 
-2. Run preflight only with real `.env.mainnet.local` values:
+2. Run preflight only with real `.env.mainnet.local` values. This includes the fork-local Web3 real-token check:
 
 ```bash
 ENV_FILE=.env.mainnet.local scripts/e2e-live-mainnet.sh preflight

@@ -106,7 +106,20 @@ Run contract tests:
 
 ```bash
 cd web3
-forge test
+forge build
+forge test --no-match-path test/StakeEnforcerFork.t.sol
+```
+
+Run fork-local real token checks against canonical Ethereum/Polygon USDC/USDT contracts:
+
+```bash
+scripts/e2e-web3-fork.sh
+```
+
+Public RPC defaults are provided for smoke checks. For acceptance or CI, use owned provider endpoints:
+
+```bash
+ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... scripts/e2e-web3-fork.sh
 ```
 
 Verify mainnet deployment config before real approvals:
@@ -125,11 +138,12 @@ scripts/verify-mainnet-deploy.sh
 Run focused checks:
 
 ```bash
-cd backend && go test ./...
-cd frontend && npm test && npm run build
-cd web3 && forge test
-cd android-app && ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}" gradle testDebugUnitTest assembleDebug
-cd telegram-bot && go test ./...
+(cd backend && go test ./...)
+(cd frontend && npm test && npm run build)
+(cd web3 && forge test --no-match-path test/StakeEnforcerFork.t.sol)
+scripts/e2e-web3-fork.sh
+(cd android-app && ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}" gradle testDebugUnitTest assembleDebug)
+(cd telegram-bot && go test ./...)
 ```
 
 Run the full local suite from the repo root:

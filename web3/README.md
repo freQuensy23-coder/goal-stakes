@@ -50,8 +50,24 @@ From `web3/`:
 
 ```sh
 forge build
-forge test -vvv
+forge test --no-match-path test/StakeEnforcerFork.t.sol -vvv
 ```
+
+From the repo root, run fork-local checks against canonical Ethereum/Polygon USDC/USDT
+contracts:
+
+```sh
+scripts/e2e-web3-fork.sh
+```
+
+Use owned RPC endpoints for acceptance runs:
+
+```sh
+ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... scripts/e2e-web3-fork.sh
+```
+
+The fork suite must show all four real-token cases passing. Mock-only tests or
+`SimulatedBackend` checks are not enough to accept money-moving Web3 behavior.
 
 ## Export ABI (IF1)
 

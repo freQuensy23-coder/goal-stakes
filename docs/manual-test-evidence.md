@@ -676,3 +676,72 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - All required checks passed: yes for local acceptance, docs/e2e coverage, and emulator/browser manual review
 - Known failures: none in the implemented local acceptance scope
 - Ready to launch: yes for local/staging handoff; mainnet launch still requires real secrets and the explicit sacrificial-wallet live-burn plan
+
+## 2026-07-01 Web3 Fork-Local Redo
+
+### Run Context
+
+- Date/time: 2026-07-01 09:08:16 IDT
+- Workspace: `/Users/a.mametyev/PycharmProjects/target-app`
+- Branch: `main`
+- Commit before this fix: `ea1ea37`
+- Environment: local Foundry fork tests using public Ethereum/Polygon RPC defaults, Docker Postgres full local suite
+- Tester/agent: Codex
+
+### Commands
+
+- Command: `scripts/e2e-web3-fork.sh`
+- Initial result: fail before the RPC default fix
+- Relevant output: `eth.llamarpc.com` returned Cloudflare HTTP `521`; `polygon-rpc.com` returned disabled API key / HTTP `401`
+- Fix applied after failure: changed fork defaults to `https://ethereum.publicnode.com` and `https://polygon-bor-rpc.publicnode.com`; documented that acceptance should use owned provider RPCs when available
+- Rerun result: pass
+- Rerun relevant output: 4 fork tests passed, 0 failed, 0 skipped
+- Additional fork assertions: each case verifies the expected fork `chainid` and confirms contract code exists at the canonical token address before approving and burning
+- Covered cases:
+  - `test_forkEthereumUSDC_burnsRealTokenToDeadAddress`
+  - `test_forkEthereumUSDT_burnsRealTokenToDeadAddress`
+  - `test_forkPolygonUSDC_burnsRealTokenToDeadAddress`
+  - `test_forkPolygonUSDT_burnsRealTokenToDeadAddress`
+
+- Command: `cd web3 && forge build && forge test --no-match-path test/StakeEnforcerFork.t.sol`
+- Result: pass
+- Relevant output: 12 unit tests passed, 0 failed, 0 skipped
+- Fix applied after failure: split unit Web3 tests from fork-only tests so `forge test` without RPC does not pretend to be full Web3 acceptance
+- Rerun result: pass
+
+- Command: `scripts/e2e-local.sh`
+- Result: pass
+- Relevant output: `local e2e suite passed`
+- New Web3 evidence inside the suite: unit tests passed with 12 tests; fork-local tests passed with Ethereum USDC, Ethereum USDT, Polygon USDC, and Polygon USDT; backend+web3 local e2e passed
+- Other suite evidence: backend tests, backend admin smoke, frontend tests/build, browser wallet e2e, Android JVM build/tests, Telegram bot tests/e2e, own-agent cron e2e, mainnet handoff dry-run, and secret scan all passed
+
+### Screenshot Review
+
+- File path: not applicable
+- Opened with: not applicable
+- What was visually checked: no web or Android UI changed in this redo; this was a Web3 test/manual-gate correction
+- Result: not applicable
+- Fix applied after failure: none
+
+### Checklist Results
+
+- Setup: pass; Docker Postgres was already running and full local suite completed
+- Unit and build: pass for backend, frontend, Web3 unit tests, Android JVM, and Telegram bot
+- Integration: pass for full local suite, including browser wallet e2e, backend admin smoke, backend+web3 local e2e, Telegram fake e2e, own-agent fake cron, and secret scan
+- Web3 fork-local: pass against real forked canonical USDC/USDT contracts on Ethereum and Polygon
+- Penalties: pass for mock unit behavior, backend simulated chain e2e, and real-token fork-local `StakeEnforcer.penalize`
+- Documentation: pass; README, runbook, web3 README, live/local e2e scripts, and manual checklist now require explicit fork-local Web3 acceptance
+- Mainnet dry run: pass inside `scripts/e2e-local.sh`; live mainnet burn was not executed
+
+### Unrun Checks
+
+- Check: live mainnet burn transaction with real wallet funds
+- Reason: still destructive and requires a written sacrificial-wallet plan plus real `.env.mainnet.local` secrets
+- Risk: deployed-provider or funded-wallet issues could appear only in live mainnet execution
+- Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/e2e-live-mainnet.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence
+
+### Final Decision
+
+- All required checks passed: yes for this Web3 fork-local redo and local acceptance gate
+- Known failures: none after rerun
+- Ready to launch: yes for local/staging handoff; live mainnet burn remains intentionally gated behind the sacrificial-wallet plan

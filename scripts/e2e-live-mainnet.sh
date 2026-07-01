@@ -255,7 +255,8 @@ run_preflight() {
   (cd "$ROOT/frontend" && VITE_API_BASE_URL="$VITE_API_BASE_URL" npm test && VITE_API_BASE_URL="$VITE_API_BASE_URL" npm run build)
 
   echo "== web3 build/tests =="
-  (cd "$ROOT/web3" && forge build && forge test)
+  (cd "$ROOT/web3" && forge build && forge test --no-match-path test/StakeEnforcerFork.t.sol)
+  "$ROOT/scripts/e2e-web3-fork.sh"
 
   if command -v gradle >/dev/null 2>&1; then
     echo "== android build/tests =="

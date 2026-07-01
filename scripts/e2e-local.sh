@@ -29,7 +29,10 @@ echo "== web, api, ai, and android client e2e =="
 node "$ROOT/scripts/e2e-web-wallet.mjs"
 
 echo "== web3 =="
-(cd "$ROOT/web3" && forge build && forge test)
+(cd "$ROOT/web3" && forge build && forge test --no-match-path test/StakeEnforcerFork.t.sol)
+
+echo "== web3 fork-local =="
+"$ROOT/scripts/e2e-web3-fork.sh"
 
 echo "== mainnet deploy handoff dry-run =="
 ETHEREUM_STAKE_ENFORCER_ADDRESS=0x1111111111111111111111111111111111111111 \
