@@ -867,6 +867,14 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Result: pass after backend runner fix
 - Relevant output: backend admin startup guards now run against a prebuilt API binary, so CI cold Go compilation cannot hide the expected negative startup failures.
 
+- Command: `gh run view 28508623166 --json status,conclusion,url,jobs`
+- Result: cancelled after diagnosing a CI hang
+- Relevant output: unit job passed; integration job stayed in `integrations_tests/run_e2e_tests.sh` for about 18 minutes with no partial logs available from GitHub, so the run was canceled and the unbounded Android `adb wait-for-device` path was hardened.
+
+- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" android-app/integration_test/run_e2e_tests.sh`
+- Result: pass after Android wait hardening
+- Relevant output: Android emulator e2e passed and generated fresh portrait, goals edit, chat, voice, settings, own-agent, invalid URL, and landscape screenshots.
+
 - Command: `scripts/run_unit_tests.sh`
 - Result: pass
 - Relevant output: backend, frontend, Web3, Android JVM/build, and Telegram unit suites passed; test layout guard passed.
@@ -890,7 +898,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 ### Screenshot Review
 
 - Opened: all PNG files under `.e2e/android-emulator/`
-- Result: pass; Goals, Chat, Settings, own-agent, invalid URL, portrait, and landscape screens are readable with no blank screen or obvious control overlap.
+- Result: pass after Android wait hardening; Goals, edit panel, Chat, voice fallback, Settings, own-agent, invalid URL, portrait, and landscape screens are readable with no blank screen or obvious control overlap.
 
 - Opened: all PNG files under `.e2e/manual-web/`
 - Result: pass; landing, wallet rejection, approval, approval revert, chat, voice, goals, settings, API key, own-agent, and Telegram link states render correctly on desktop and mobile.
@@ -900,5 +908,6 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - CI workflow root cause fixed: `forge-std` is a tracked submodule and GitHub checkout uses recursive submodules.
 - CI unit root cause fixed: workflow now uses Gradle `9.4.1`, above the Android plugin minimum of `9.3.1`.
 - CI integration root cause fixed: backend e2e builds one API binary before startup checks and uses it for both valid startup and negative guards.
+- CI hang guard added: Android e2e no longer blocks forever at `adb wait-for-device`; it polls for a real device with a bounded timeout and prints emulator logs on failure.
 - Env examples cleaned: only `.env.example` remains; live/mainnet values use `.env.mainnet.local`.
 - Manual checklist cleaned: authoritative checklist lives in `docs/manual-test-checklist.md`; root legacy redirect file removed.

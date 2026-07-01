@@ -17,6 +17,7 @@ mkdir -p "$EVIDENCE_DIR"
 rm -f "$EVIDENCE_DIR"/*.png "$EVIDENCE_DIR"/window-*.xml
 
 started_emulator=0
+emulator_pid=""
 api_pid=""
 cleanup() {
   if [[ -n "$api_pid" ]]; then
@@ -28,6 +29,29 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+has_adb_device() {
+  "$ADB" devices | awk 'NR > 1 && $2 == "device" { found = 1 } END { exit(found ? 0 : 1) }'
+}
+
+wait_for_adb_device() {
+  for _ in {1..300}; do
+    if has_adb_device; then
+      return 0
+    fi
+    if [[ -n "$emulator_pid" ]] && ! kill -0 "$emulator_pid" >/dev/null 2>&1; then
+      echo "Android emulator process exited before adb reported a device" >&2
+      tail -n 120 "$EVIDENCE_DIR/emulator.log" >&2 || true
+      exit 1
+    fi
+    sleep 1
+  done
+
+  echo "Android emulator did not appear in adb devices" >&2
+  "$ADB" devices >&2 || true
+  tail -n 120 "$EVIDENCE_DIR/emulator.log" >&2 || true
+  exit 1
+}
 
 echo "starting Android smoke API on host port $API_PORT"
 GOALSTAKES_ANDROID_API_PORT="$API_PORT" node "$ROOT/android-app/integration_test/fake_api.mjs" \
@@ -50,15 +74,16 @@ for i in {1..50}; do
   sleep 0.2
 done
 
-if ! "$ADB" devices | awk 'NR > 1 && $2 == "device" { found = 1 } END { exit(found ? 0 : 1) }'; then
+if ! has_adb_device; then
   echo "starting Android emulator $AVD_NAME"
   nohup "$EMULATOR" -avd "$AVD_NAME" -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect \
     >"$EVIDENCE_DIR/emulator.log" 2>&1 &
+  emulator_pid=$!
   started_emulator=1
 fi
 
 echo "waiting for emulator boot"
-"$ADB" wait-for-device
+wait_for_adb_device
 for i in {1..120}; do
   if "$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
     break
