@@ -33,7 +33,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: none after final run
 - Rerun result: pass
 
-- Command: `node scripts/e2e-web-wallet.mjs`
+- Command: `node integrations_tests/web_wallet_e2e.mjs`
 - Result: pass
 - Relevant output: `web wallet e2e passed`
 - Fix applied after failure: fake OpenAI server now handles `/v1/audio/transcriptions`; e2e calls `/api/v1/chat/audio` with multipart audio and verifies transcript/reply/conversation id
@@ -68,7 +68,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 
 ### Unrun Checks
 
-- Check: full `scripts/e2e-local.sh`
+- Check: full `integrations_tests/run_e2e_tests.sh`
 - Reason: current task changed backend audio API and frontend API client only; full suite is reserved for broader integration checkpoints after dependent Telegram/agent tasks land
 - Risk: Android, Telegram, web3, and live-shape regressions could still exist outside this task
 - Required follow-up: run full local suite before final goal completion
@@ -116,13 +116,13 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: removed bot-side raw API key storage and `/apikey sk_...` supported flow; added `/link code` and backend internal link call
 - Rerun result: pass
 
-- Command: `node scripts/e2e-web-wallet.mjs`
+- Command: `node integrations_tests/web_wallet_e2e.mjs`
 - Result: pass
 - Relevant output: `web wallet e2e passed`
 - Fix applied after failure: web Settings now generates Telegram link code and e2e verifies it is not an `sk_` key
 - Rerun result: pass
 
-- Command: `node scripts/e2e-telegram-bot.mjs`
+- Command: `telegram-bot/integration_test/run_e2e_tests.sh`
 - Result: pass
 - Relevant output: `telegram bot e2e passed`
 - Fix applied after failure: fake Telegram e2e now uses `/link code`, bot secret, and `/internal/telegram/link`
@@ -193,7 +193,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: handler now forwards non-link text to `/internal/telegram/message`; Telegram client parses `message_id`, private/group `message`, and `channel_post`
 - Rerun result: pass
 
-- Command: `node scripts/e2e-telegram-bot.mjs`
+- Command: `telegram-bot/integration_test/run_e2e_tests.sh`
 - Result: pass
 - Relevant output: `telegram bot e2e passed`
 - Fix applied after failure: fake e2e now covers `/link`, private commands, group forwarding, channel post forwarding, free text, and secret-leak checks through internal backend endpoints only
@@ -258,7 +258,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: added `voice`/`audio` update structs, `getFile`, token-safe file download, multipart backend upload, and handler audio forwarding
 - Rerun result: pass
 
-- Command: `node scripts/e2e-telegram-bot.mjs`
+- Command: `telegram-bot/integration_test/run_e2e_tests.sh`
 - Result: pass
 - Relevant output: `telegram bot e2e passed`
 - Fix applied after failure: fake Telegram e2e now includes `channel_post.voice(file_id=voice-file-id)`, `getFile`, file download, backend `/internal/telegram/audio`, transcript `я отжался 10 раз`, and reply `Записал: 10 отжиманий`
@@ -384,13 +384,13 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: added `/agent` command path that calls backend with `TELEGRAM_BOT_SECRET`
 - Rerun result: pass
 
-- Command: `node scripts/e2e-telegram-bot.mjs`
+- Command: `telegram-bot/integration_test/run_e2e_tests.sh`
 - Result: pass
 - Relevant output: `telegram bot e2e passed`
 - Fix applied after failure: fake Telegram e2e now sends `/agent`, fake backend receives `/internal/telegram/agent-link`, and bot replies with the private skill URL
 - Rerun result: pass
 
-- Command: `node scripts/e2e-web-wallet.mjs`
+- Command: `node integrations_tests/web_wallet_e2e.mjs`
 - Result: pass
 - Relevant output: web wallet e2e passed, including Settings `Connect own agent`, private Markdown fetch, generated agent secret API call, list response secret redaction, revoke, and post-revoke `401`
 - Fix applied after failure: added web Settings own-agent panel and e2e assertions that the UI URL does not expose `sk_`
@@ -402,7 +402,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: `./gradlew` was not present and Gradle required `ANDROID_HOME`; reran with installed `gradle` and explicit `ANDROID_HOME`
 - Rerun result: pass
 
-- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" scripts/e2e-android-emulator.sh`
+- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" android-app/integration_test/run_e2e_tests.sh`
 - Result: pass
 - Relevant output: `android emulator e2e passed`
 - Fix applied after failure: after scrolling to the own-agent section, the invalid-URL test could not find the API URL field; added a scroll back toward the API connection section before editing the URL
@@ -487,7 +487,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: none
 - Rerun result: not needed
 
-- Command: `node scripts/e2e-web-wallet.mjs`
+- Command: `node integrations_tests/web_wallet_e2e.mjs`
 - Result: pass
 - Relevant output: `web wallet e2e passed`
 - Fix applied after failure: first e2e assertion expected `tx_hash is required` for a legacy payload containing `allowance`; decoder rejects unknown legacy `allowance` as `invalid json`. Updated e2e to assert both behaviors: legacy `allowance` is rejected as invalid JSON, and the new dry-run shape without `tx_hash` returns `tx_hash is required`
@@ -525,7 +525,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Check: live RPC approval verification with real wallet transaction hash
 - Reason: local e2e runs with `ALLOW_DISABLED_ENFORCER=true` and no `ENFORCER_PRIVATE_KEY`
 - Risk: provider/network-specific RPC issues could still fail in staging/mainnet
-- Required follow-up: run `scripts/e2e-live-mainnet.sh` or staging equivalent with `ENFORCER_PRIVATE_KEY` and real RPC before production launch
+- Required follow-up: run `scripts/live_mainnet_gate.sh` or staging equivalent with `ENFORCER_PRIVATE_KEY` and real RPC before production launch
 
 ### Final Decision
 
@@ -554,7 +554,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: first command used backend-prefixed paths while already in `backend/`; reran with correct paths
 - Rerun result: pass
 
-- Command: `node scripts/e2e-own-agent-cron.mjs`
+- Command: `node integrations_tests/own_agent_cron_e2e.mjs`
 - Result: pass
 - Relevant output: `own-agent cron e2e passed`
 - Fix applied after failure: added fake-agent script that fetches a private skill, extracts generated `sk_`, calls `GET /api/v1/goals`, sends a reminder for active unarchived goals only, sends nothing for empty goals, and gets `401` after revocation
@@ -613,13 +613,13 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 
 ### Commands
 
-- Command: `scripts/e2e-local.sh`
+- Command: `integrations_tests/run_e2e_tests.sh`
 - Result: pass
 - Relevant output: `local e2e suite passed`
-- Fix applied after failure: first run failed in backend admin smoke because `scripts/e2e-backend-admin.sh` expected goose migration version `2`; current schema has migration `0004_agent_links.sql`. Updated the script to derive the expected migration version from `backend/migrations/[0-9][0-9][0-9][0-9]_*.sql`
+- Fix applied after failure: first run failed in backend admin smoke because `backend/integration_test/run_e2e_tests.sh` expected goose migration version `2`; current schema has migration `0004_agent_links.sql`. Updated the script to derive the expected migration version from `backend/migrations/[0-9][0-9][0-9][0-9]_*.sql`
 - Rerun result: pass
 
-- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" scripts/e2e-android-emulator.sh`
+- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" android-app/integration_test/run_e2e_tests.sh`
 - Result: pass
 - Relevant output: `android emulator e2e passed`; output lists `settings-agent.png`, proving the own-agent screenshot artifact is now included in the script result
 - Fix applied after failure: none after final run
@@ -669,7 +669,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Check: live mainnet burn transaction with real wallet funds
 - Reason: manual checklist says not to run live burn without a written sacrificial-wallet plan
 - Risk: real RPC/provider or wallet funding issues could appear outside local/staging verification
-- Required follow-up: before production mainnet launch, prepare sacrificial wallet plan and run `scripts/e2e-live-mainnet.sh` with real `.env.mainnet.local`
+- Required follow-up: before production mainnet launch, prepare sacrificial wallet plan and run `scripts/live_mainnet_gate.sh` with real `.env.mainnet.local`
 
 ### Final Decision
 
@@ -690,7 +690,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 
 ### Commands
 
-- Command: `scripts/e2e-web3-fork.sh`
+- Command: `web3/integration_test/run_e2e_tests.sh`
 - Initial result: fail before the RPC default fix
 - Relevant output: `eth.llamarpc.com` returned Cloudflare HTTP `521`; `polygon-rpc.com` returned disabled API key / HTTP `401`
 - Fix applied after failure: changed fork defaults to `https://ethereum.publicnode.com` and `https://polygon-bor-rpc.publicnode.com`; documented that acceptance should use owned provider RPCs when available
@@ -709,7 +709,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Fix applied after failure: split unit Web3 tests from fork-only tests so `forge test` without RPC does not pretend to be full Web3 acceptance
 - Rerun result: pass
 
-- Command: `scripts/e2e-local.sh`
+- Command: `integrations_tests/run_e2e_tests.sh`
 - Result: pass
 - Relevant output: `local e2e suite passed`
 - New Web3 evidence inside the suite: unit tests passed with 12 tests; fork-local tests passed with Ethereum USDC, Ethereum USDT, Polygon USDC, and Polygon USDT; backend+web3 local e2e passed
@@ -731,14 +731,14 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Web3 fork-local: pass against real forked canonical USDC/USDT contracts on Ethereum and Polygon
 - Penalties: pass for mock unit behavior, backend simulated chain e2e, and real-token fork-local `StakeEnforcer.penalize`
 - Documentation: pass; README, runbook, web3 README, live/local e2e scripts, and manual checklist now require explicit fork-local Web3 acceptance
-- Mainnet dry run: pass inside `scripts/e2e-local.sh`; live mainnet burn was not executed
+- Mainnet dry run: pass inside `integrations_tests/run_e2e_tests.sh`; live mainnet burn was not executed
 
 ### Unrun Checks
 
 - Check: live mainnet burn transaction with real wallet funds
 - Reason: still destructive and requires a written sacrificial-wallet plan plus real `.env.mainnet.local` secrets
 - Risk: deployed-provider or funded-wallet issues could appear only in live mainnet execution
-- Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/e2e-live-mainnet.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence
+- Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence
 
 ### Final Decision
 
@@ -834,80 +834,82 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Risk: deployed-provider or funded-wallet issues could appear only in live mainnet execution
 - Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence
 
-## 2026-07-01 CI And Docs Cleanup
+## 2026-07-01 Test Contract Enforcement And CI AVD Fix
 
 ### Run Context
 
-- Date/time: 2026-07-01 12:31 IDT
+- Date/time: 2026-07-01 13:44 IDT
 - Workspace: `/Users/a.mametyev/PycharmProjects/target-app`
 - Branch: `main`
-- Commit under test: follow-up to failed GitHub Actions run `28507913516` on `6dc11df`
-- Environment: local Docker Postgres, Foundry fork-local RPC defaults, Android emulator `twinby_mitm`
 - Tester/agent: Codex
+- Scope: enforce the `AGENTS.md` test layout contract, remove the shared helper outside the documented runners, and fix the Android AVD path that made GitHub Actions integration red.
+
+### CI Failure Root Cause
+
+- Command: `gh run view 28510032027 --json databaseId,url,status,conclusion,headSha,displayTitle,workflowName,jobs`
+- Result: fail confirmed before fix
+- Relevant output: unit job passed; integration job failed in `Run integrations_tests/run_e2e_tests.sh`.
+
+- Command: `gh run view 28510032027 --log-failed | rg -n "Unknown AVD name|goalstakes_ci|HOME is defined|Android emulator process exited"`
+- Result: fail root cause confirmed
+- Relevant output: `Android emulator process exited before adb reported a device`; `Unknown AVD name [goalstakes_ci]`; `HOME is defined but there is no file goalstakes_ci.ini in $HOME/.android/avd`.
+- Fix applied: GitHub workflow now creates the AVD under one explicit `ANDROID_AVD_HOME`, passes the same value into `integrations_tests/run_e2e_tests.sh`, and lists AVDs after creation.
 
 ### Commands
 
-- Command: `gh run view 28507913516 --json databaseId,url,status,conclusion,headSha,displayTitle,workflowName,jobs`
-- Result: fail, root cause recorded before local fix
-- Relevant output: `unit` and `integration` jobs failed for `6dc11df`.
-
-- Command: `gh run view 28507913516 --log-failed | rg -n "Minimum supported Gradle|Current version|missing-jwt startup kept running|expected failure|FAIL|Error"`
-- Result: fail, root cause recorded before local fix
-- Relevant output: unit job used Gradle `9.1.0` while the Android plugin requires at least `9.3.1`; integration job reported `missing-jwt startup kept running; expected failure`.
-
-- Command: `bash -n scripts/lib/test_support.sh scripts/run_unit_tests.sh integrations_tests/run_e2e_tests.sh backend/integration_test/run_e2e_tests.sh web3/integration_test/run_e2e_tests.sh scripts/live_mainnet_gate.sh`
+- Command: `bash -n scripts/run_unit_tests.sh integrations_tests/run_e2e_tests.sh backend/integration_test/run_e2e_tests.sh web3/integration_test/run_e2e_tests.sh android-app/integration_test/run_e2e_tests.sh telegram-bot/integration_test/run_e2e_tests.sh scripts/live_mainnet_gate.sh scripts/secret-scan.sh scripts/verify-mainnet-deploy.sh`
 - Result: pass
-- Relevant output: shell syntax passed for changed runners and helper.
+- Relevant output: no shell syntax errors.
 
 - Command: `git diff --check`
 - Result: pass
 - Relevant output: no whitespace errors.
 
-- Command: `backend/integration_test/run_e2e_tests.sh`
-- Result: pass after backend runner fix
-- Relevant output: backend admin startup guards now run against a prebuilt API binary, so CI cold Go compilation cannot hide the expected negative startup failures.
-
-- Command: `gh run view 28508623166 --json status,conclusion,url,jobs`
-- Result: cancelled after diagnosing a CI hang
-- Relevant output: unit job passed; integration job stayed in `integrations_tests/run_e2e_tests.sh` for about 18 minutes with no partial logs available from GitHub, so the run was canceled and the unbounded Android `adb wait-for-device` path was hardened.
-
-- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" android-app/integration_test/run_e2e_tests.sh`
-- Result: pass after Android wait hardening
-- Relevant output: Android emulator e2e passed and generated fresh portrait, goals edit, chat, voice, settings, own-agent, invalid URL, and landscape screenshots.
+- Command: `rg -n "$LEGACY_TEST_LAYOUT_PATTERNS" -S . .github -g '!AGENTS.md' -g '!docs/manual-test-checklist.md' -g '!docs/manual-test-evidence.md'`
+- Result: pass
+- Relevant output: no stale runner/helper/env/checklist references outside the rule docs.
 
 - Command: `scripts/run_unit_tests.sh`
 - Result: pass
-- Relevant output: backend, frontend, Web3, Android JVM/build, and Telegram unit suites passed; test layout guard passed.
+- Relevant output: test layout guard passed; backend, frontend, Web3, Android JVM/build, and Telegram unit suites passed.
+- Fix applied before rerun: the layout guard now covers `*_e2e.mjs`, `.spec.ts`, `.spec.tsx`, `.test.tsx`, and allows only `tests/`, per-module `integration_test/`, or root `integrations_tests/`.
 
 - Command: `integrations_tests/run_e2e_tests.sh`
 - Result: pass
-- Relevant output: backend e2e passed; Web3 fork-local real-token checks passed 4/4; web wallet/API/AI e2e passed; Telegram bot e2e passed; own-agent cron e2e passed; mainnet gate shape passed; Android emulator e2e passed; secret scan passed.
-
-- Command: `rg -n "\.env\.mainnet\.example|manual_checklist\.md|manual checklist\.md" -S . .github`
-- Result: pass
-- Relevant output: no references to removed legacy docs/env files.
-
-- Command: `find scripts -maxdepth 1 -type f -name 'e2e-*' -print`
-- Result: pass
-- Relevant output: no ad-hoc root e2e scripts.
-
-- Command: `git submodule status --recursive`
-- Result: pass
-- Relevant output: `web3/lib/forge-std` pinned to `620536f... (v1.16.1)`.
+- Relevant output: backend e2e passed; Web3 fork-local real-token checks passed 4/4; web wallet/API/AI e2e passed; Telegram bot e2e passed; own-agent cron e2e passed; mainnet gate shape passed; Android emulator e2e passed; secret scan passed; integration suite passed.
+- Fix applied before rerun: removed the shared helper script outside the agreed test flow; documented runners now rely on the repository checkout/submodule.
 
 ### Screenshot Review
 
-- Opened: all PNG files under `.e2e/android-emulator/`
-- Result: pass after Android wait hardening; Goals, edit panel, Chat, voice fallback, Settings, own-agent, invalid URL, portrait, and landscape screens are readable with no blank screen or obvious control overlap.
+- Opened: `.e2e/manual-web/landing-desktop.png`, `.e2e/manual-web/landing-mobile.png`
+- Result: pass; landing desktop/mobile are readable, connected CTAs and runtime copy fit.
 
-- Opened: all PNG files under `.e2e/manual-web/`
-- Result: pass; landing, wallet rejection, approval, approval revert, chat, voice, goals, settings, API key, own-agent, and Telegram link states render correctly on desktop and mobile.
+- Opened: `.e2e/manual-web/wallet-signature-rejected-desktop.png`, `.e2e/manual-web/approval-gate-desktop.png`, `.e2e/manual-web/approval-reverted-desktop.png`
+- Result: pass; wallet rejection, approval gate, and reverted approval error render clearly with usable controls.
+
+- Opened: `.e2e/manual-web/goals-desktop.png`, `.e2e/manual-web/goals-after-api-desktop.png`, `.e2e/manual-web/goals-after-android-desktop.png`
+- Result: pass; goal create/edit/action states are visible and aligned.
+
+- Opened: `.e2e/manual-web/chat-desktop.png`, `.e2e/manual-web/chat-voice-desktop.png`
+- Result: pass; chat input, messages, send, and voice fallback states are readable without overlap.
+
+- Opened: `.e2e/manual-web/settings-desktop.png`, `.e2e/manual-web/settings-api-key-created.png`, `.e2e/manual-web/settings-mobile.png`
+- Result: pass; Settings desktop/mobile are usable. `settings-api-key-created.png` intentionally shows a generated local user API key once for the copy flow; it is not an AI provider key, and the Telegram link code plus own-agent URL do not expose raw `sk_`.
+
+- Opened: every fresh PNG under `.e2e/android-emulator/`
+- Result: pass; portrait, goals-scrolled, chat, chat-voice, settings, settings-agent, settings-invalid-url, and landscape screens are nonblank, readable, and have no critical control overlap.
 
 ### Checklist Results
 
-- CI workflow root cause fixed: `forge-std` is a tracked submodule and GitHub checkout uses recursive submodules.
-- CI unit root cause fixed: workflow now uses Gradle `9.4.1`, above the Android plugin minimum of `9.3.1`.
-- CI integration root cause fixed: backend e2e builds one API binary before startup checks and uses it for both valid startup and negative guards.
-- CI hang guard added: Android e2e no longer blocks forever at `adb wait-for-device`; it polls for a real device with a bounded timeout and prints emulator logs on failure.
-- Env examples cleaned: only `.env.example` remains; live/mainnet values use `.env.mainnet.local`.
-- Manual checklist cleaned: authoritative checklist lives in `docs/manual-test-checklist.md`; root legacy redirect file removed.
+- Unit layout: pass through the single documented `scripts/run_unit_tests.sh`.
+- Per-module e2e layout: pass through module `integration_test/run_e2e_tests.sh` runners only.
+- System e2e layout: pass through the single documented `integrations_tests/run_e2e_tests.sh`.
+- Ad-hoc script cleanup: pass; no root ad-hoc e2e runners or shared test helper remain.
+- CI fix: local reproduction passes; GitHub Actions rerun still required after push.
+
+### Unrun Checks
+
+- Check: live mainnet burn transaction with real wallet funds
+- Reason: destructive and still requires a written sacrificial-wallet plan plus real `.env.mainnet.local` secrets
+- Risk: deployed-provider or funded-wallet issues could appear only in live mainnet execution
+- Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence

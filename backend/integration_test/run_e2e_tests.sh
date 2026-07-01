@@ -7,10 +7,6 @@ API_BIN="$EVIDENCE_DIR/api.bin"
 mkdir -p "$EVIDENCE_DIR"
 rm -f "$EVIDENCE_DIR"/*.log "$EVIDENCE_DIR"/*.json "$EVIDENCE_DIR"/*.txt "$API_BIN"
 
-# shellcheck source=../../scripts/lib/test_support.sh
-source "$ROOT/scripts/lib/test_support.sh"
-ensure_forge_std "$ROOT"
-
 API_PID=""
 cleanup() {
   if [[ -n "$API_PID" ]] && kill -0 "$API_PID" >/dev/null 2>&1; then

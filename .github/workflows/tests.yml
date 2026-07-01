@@ -66,9 +66,14 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Create Android AVD
+        env:
+          ANDROID_AVD_HOME: /home/runner/.android/avd
         run: |
+          mkdir -p "$ANDROID_AVD_HOME"
           sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
-          echo "no" | avdmanager create avd -f -n goalstakes_ci -k "system-images;android-35;google_apis;x86_64" --device "pixel_6"
+          echo "no" | avdmanager create avd -f -n goalstakes_ci -k "system-images;android-35;google_apis;x86_64" --device "pixel_6" --path "$ANDROID_AVD_HOME/goalstakes_ci.avd"
+          avdmanager list avd
       - run: integrations_tests/run_e2e_tests.sh
         env:
           ANDROID_AVD_NAME: goalstakes_ci
+          ANDROID_AVD_HOME: /home/runner/.android/avd
