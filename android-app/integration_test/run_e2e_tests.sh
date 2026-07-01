@@ -140,6 +140,8 @@ assert_window_text() {
   local text="$2"
   if ! grep -q "$text" "$EVIDENCE_DIR/$file"; then
     echo "Expected '$text' in Android UI dump $file" >&2
+    tail -n 80 "$EVIDENCE_DIR/$file" >&2 || true
+    "$ADB" shell logcat -d -t 120 >&2 2>/dev/null || true
     exit 1
   fi
 }
@@ -153,12 +155,21 @@ assert_window_any_text() {
     fi
   done
   echo "Expected one of '$*' in Android UI dump $file" >&2
+  tail -n 80 "$EVIDENCE_DIR/$file" >&2 || true
+  "$ADB" shell logcat -d -t 120 >&2 2>/dev/null || true
   exit 1
 }
 
 tap_tab() {
   local x="$1"
   "$ADB" shell input tap "$x" "$TAB_Y" >/dev/null 2>&1 || true
+  sleep 1
+}
+
+tap_tab_text() {
+  local text="$1"
+  dump_window "window-action.xml"
+  tap_window_node "window-action.xml" "$text" "android.widget.Button"
   sleep 1
 }
 
@@ -199,6 +210,20 @@ NODE
 )"
   "$ADB" shell input tap $coords >/dev/null 2>&1
   sleep 0.5
+}
+
+wait_for_window_text() {
+  local file="$1"
+  local text="$2"
+  local attempts="${3:-20}"
+  for _ in $(seq 1 "$attempts"); do
+    dump_window "$file"
+    if grep -q "$text" "$EVIDENCE_DIR/$file"; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  assert_window_text "$file" "$text"
 }
 
 tap_text() {
@@ -408,9 +433,8 @@ swipe_to_text "Update title, description, stake, end date"
 dump_window "window-goals-scrolled.xml"
 "$ADB" exec-out screencap -p > "$EVIDENCE_DIR/goals-scrolled.png"
 
-tap_tab 540
-dump_window "window-chat.xml"
-assert_window_text "window-chat.xml" "AI goal manager"
+tap_tab_text "Chat"
+wait_for_window_text "window-chat.xml" "AI goal manager"
 "$ADB" exec-out screencap -p > "$EVIDENCE_DIR/chat.png"
 tap_text "Voice"
 sleep 1
@@ -420,15 +444,13 @@ dump_window "window-chat-voice.xml"
 assert_window_any_text "window-chat-voice.xml" "Voice input is not available on this device" "Voice input was canceled" "Voice input returned no text"
 "$ADB" exec-out screencap -p > "$EVIDENCE_DIR/chat-voice.png"
 
-tap_tab 900
-dump_window "window-settings.xml"
-assert_window_text "window-settings.xml" "API connection"
+tap_tab_text "Settings"
+wait_for_window_text "window-settings.xml" "API connection"
 "$ADB" exec-out screencap -p > "$EVIDENCE_DIR/settings.png"
 swipe_to_text "Connect own agent"
 tap_text "Connect own agent"
 sleep 1
-dump_window "window-settings-agent.xml"
-assert_window_text "window-settings-agent.xml" "agt_android.md"
+wait_for_window_text "window-settings-agent.xml" "agt_android.md"
 "$ADB" exec-out screencap -p > "$EVIDENCE_DIR/settings-agent.png"
 swipe_to_text "$API_BASE" "earlier"
 tap_edit_text "$API_BASE"
@@ -437,11 +459,10 @@ adb_input_text "not_a_url"
 hide_keyboard
 tap_text "Test connection"
 sleep 0.8
-dump_window "window-settings-invalid-url.xml"
-assert_window_text "window-settings-invalid-url.xml" "API URL must start with http:// or https://"
+wait_for_window_text "window-settings-invalid-url.xml" "API URL must start with http:// or https://"
 "$ADB" exec-out screencap -p > "$EVIDENCE_DIR/settings-invalid-url.png"
 
-tap_tab 180
+tap_tab_text "Goals"
 
 echo "exercising Android visible goal actions"
 sleep 1
@@ -458,7 +479,7 @@ tap_text "Update title, description, stake, end date"
 sleep 1.2
 assert_api_goal "android-fake-goal" "Android UI updated" "1000000"
 
-tap_tab 180
+tap_tab_text "Goals"
 sleep 1
 swipe_to_text "Show progress"
 tap_text "Show progress"
@@ -466,7 +487,7 @@ sleep 0.7
 dump_window "window-ui-flow-progress.xml"
 assert_window_text "window-ui-flow-progress.xml" "Completed: yes | violations: 0"
 
-tap_tab 180
+tap_tab_text "Goals"
 sleep 1
 swipe_to_text "Archive selected goal"
 tap_text "Archive selected goal"
@@ -474,7 +495,7 @@ sleep 1.2
 dump_window "window-ui-flow-archive.xml"
 assert_api_goal_missing "android-fake-goal"
 
-tap_tab 180
+tap_tab_text "Goals"
 sleep 1
 swipe_to_text "Goal title"
 tap_edit_text "Goal title"
@@ -493,8 +514,7 @@ assert_api_goal "android-created-1" "Android UI created" "2500000"
 "$ADB" shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
 "$ADB" shell am start -n "$PACKAGE/.MainActivity" >/dev/null 2>&1
 sleep 2
-dump_window "window-ui-flow-created.xml"
-assert_window_text "window-ui-flow-created.xml" "Android UI created"
+wait_for_window_text "window-ui-flow-created.xml" "Android UI created"
 
 echo "capturing landscape screenshot"
 "$ADB" shell settings put system accelerometer_rotation 0 >/dev/null 2>&1 || true

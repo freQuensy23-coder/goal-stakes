@@ -855,6 +855,11 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Relevant output: `Android emulator process exited before adb reported a device`; `Unknown AVD name [goalstakes_ci]`; `HOME is defined but there is no file goalstakes_ci.ini in $HOME/.android/avd`.
 - Fix applied: GitHub workflow now creates the AVD under one explicit `ANDROID_AVD_HOME`, passes the same value into `integrations_tests/run_e2e_tests.sh`, and lists AVDs after creation.
 
+- Command: `gh run view 28512021615 --log-failed`
+- Result: fail root cause confirmed after the AVD fix
+- Relevant output: Android emulator booted and the app installed, then `window-chat.xml` did not contain `AI goal manager`.
+- Fix applied: Android e2e tabs now tap by visible UI button text instead of fixed coordinates, waits for expected screen text with bounded retries, and prints the failing UI dump/logcat when an assertion fails.
+
 ### Commands
 
 - Command: `bash -n scripts/run_unit_tests.sh integrations_tests/run_e2e_tests.sh backend/integration_test/run_e2e_tests.sh web3/integration_test/run_e2e_tests.sh android-app/integration_test/run_e2e_tests.sh telegram-bot/integration_test/run_e2e_tests.sh scripts/live_mainnet_gate.sh scripts/secret-scan.sh scripts/verify-mainnet-deploy.sh`
@@ -878,6 +883,10 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Result: pass
 - Relevant output: backend e2e passed; Web3 fork-local real-token checks passed 4/4; web wallet/API/AI e2e passed; Telegram bot e2e passed; own-agent cron e2e passed; mainnet gate shape passed; Android emulator e2e passed; secret scan passed; integration suite passed.
 - Fix applied before rerun: removed the shared helper script outside the agreed test flow; documented runners now rely on the repository checkout/submodule.
+
+- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" android-app/integration_test/run_e2e_tests.sh`
+- Result: pass after Android tab/wait hardening
+- Relevant output: Android emulator e2e passed and regenerated portrait, goals-scrolled, chat, chat-voice, settings, settings-agent, settings-invalid-url, and landscape PNGs.
 
 ### Screenshot Review
 
@@ -905,7 +914,7 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Per-module e2e layout: pass through module `integration_test/run_e2e_tests.sh` runners only.
 - System e2e layout: pass through the single documented `integrations_tests/run_e2e_tests.sh`.
 - Ad-hoc script cleanup: pass; no root ad-hoc e2e runners or shared test helper remain.
-- CI fix: local reproduction passes; GitHub Actions rerun still required after push.
+- CI fix: local reproduction passes; the next GitHub Actions run must pass before launch.
 
 ### Unrun Checks
 
