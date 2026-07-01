@@ -40,47 +40,41 @@ test -d "$HOME/Library/Android/sdk"
 
 ## Unit And Build
 
-### Backend
-
-1. Run:
+Run the single monorepo unit runner first:
 
 ```bash
-cd backend
-go test ./...
+scripts/run_unit_tests.sh
 ```
 
+This runner is the source of truth for backend, frontend, Web3, Android JVM, and Telegram unit tests. It also fails if a unit test is added outside a `tests/` directory or if ad-hoc `scripts/e2e-*` files return.
+
+### Backend
+
+1. Confirm `scripts/run_unit_tests.sh` runs backend tests from `backend/tests/`.
 2. Confirm tests cover config validation, SIWE, API keys, goals, approvals, check-ins, violations, scheduler, store, AI tools, Telegram links, agent links, and audio transcription boundaries.
 3. Confirm raw API keys and raw agent secrets are never persisted.
 4. Confirm revoked API keys, Telegram links, and agent links cannot authenticate.
 
 ### Frontend
 
-1. Run:
-
-```bash
-cd frontend
-npm install
-npm test
-npm run build
-```
-
+1. Confirm `scripts/run_unit_tests.sh` runs frontend tests from `frontend/tests/` and builds the app.
 2. Confirm tests cover API errors, chain selection, approval failures, stake parsing, voice input, Telegram link-code UI, and own-agent link UI.
 
 ### Web3
 
-1. Run fast contract unit tests without fork-only tests:
+1. Confirm `scripts/run_unit_tests.sh` runs Web3 unit tests from `web3/tests/`.
 
 ```bash
 cd web3
 forge build
-forge test --no-match-path test/StakeEnforcerFork.t.sol
+forge test
 ```
 
 2. Confirm tests prove burn-only transfer, no custody, enforcer-only penalties, allowance failure, USDT-like behavior, false-return token failure, and ABI sync.
 3. Run fork-local real token checks from the repo root:
 
 ```bash
-scripts/e2e-web3-fork.sh
+web3/integration_test/run_e2e_tests.sh
 ```
 
 4. Confirm the fork-local suite passes all four canonical token cases: Ethereum USDC, Ethereum USDT, Polygon USDC, and Polygon USDT.
@@ -88,29 +82,17 @@ scripts/e2e-web3-fork.sh
 6. If public RPC defaults are unavailable, rerun with real provider endpoints:
 
 ```bash
-ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... scripts/e2e-web3-fork.sh
+ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... web3/integration_test/run_e2e_tests.sh
 ```
 
 ### Android
 
-1. Run:
-
-```bash
-cd android-app
-ANDROID_HOME="$HOME/Library/Android/sdk" gradle testDebugUnitTest assembleDebug
-```
-
+1. Confirm `scripts/run_unit_tests.sh` runs Android tests from `android-app/app/tests/` and builds the debug APK.
 2. Confirm tests cover API settings, goals, check-ins, violations, progress, chat, voice, Telegram/agent link surfaces if present, readable errors, and 6-decimal stake conversion.
 
 ### Telegram Bot
 
-1. Run:
-
-```bash
-cd telegram-bot
-go test ./...
-```
-
+1. Confirm `scripts/run_unit_tests.sh` runs Telegram tests from `telegram-bot/tests/`.
 2. Confirm tests cover private chat, group, channel update shapes, link code, commands, free text, voice/audio file download, backend forwarding, no token leaks, and own-agent link generation.
 
 ## Integration
@@ -118,10 +100,10 @@ go test ./...
 1. Run the full local suite:
 
 ```bash
-scripts/e2e-local.sh
+integrations_tests/run_e2e_tests.sh
 ```
 
-2. Confirm it runs backend, frontend, web3 unit tests, web3 fork-local real token checks, Android JVM, Telegram, browser wallet, API, AI, and secret-scan checks.
+2. Confirm it runs backend service e2e, web3 fork-local real token checks, browser wallet/API/AI/Android-API e2e, Telegram fake Bot API e2e, own-agent cron e2e, mainnet shape check, Android emulator e2e, and secret-scan.
 3. Confirm `.e2e/manual-web/` contains current desktop and mobile screenshots.
 4. If any step fails, fix the root cause and rerun the full suite.
 
@@ -182,7 +164,7 @@ scripts/e2e-local.sh
 1. Run emulator smoke:
 
 ```bash
-scripts/e2e-android-emulator.sh
+android-app/integration_test/run_e2e_tests.sh
 ```
 
 2. Open every screenshot under `.e2e/android-emulator/`.
@@ -225,7 +207,7 @@ scripts/e2e-android-emulator.sh
 17. Run fake Telegram smoke:
 
 ```bash
-node scripts/e2e-telegram-bot.mjs
+telegram-bot/integration_test/run_e2e_tests.sh
 ```
 
 ## Own-Agent Checks
@@ -262,7 +244,7 @@ node scripts/e2e-telegram-bot.mjs
 7. Report avoid-goal slip twice.
 8. Confirm both reports create separate visible violations.
 9. Confirm no penalty transfers to app, admin, treasury, or user-controlled destination.
-10. Confirm `scripts/e2e-web3-fork.sh` proves `StakeEnforcer.penalize` works against real forked USDC/USDT contracts on Ethereum and Polygon, not only mocks.
+10. Confirm `web3/integration_test/run_e2e_tests.sh` proves `StakeEnforcer.penalize` works against real forked USDC/USDT contracts on Ethereum and Polygon, not only mocks.
 
 ## Security Checks
 
@@ -279,13 +261,13 @@ node scripts/e2e-telegram-bot.mjs
 1. Run shape check:
 
 ```bash
-scripts/e2e-live-mainnet.sh shape
+scripts/live_mainnet_gate.sh shape
 ```
 
 2. Run preflight only with real `.env.mainnet.local` values. This includes the fork-local Web3 real-token check:
 
 ```bash
-ENV_FILE=.env.mainnet.local scripts/e2e-live-mainnet.sh preflight
+ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight
 ```
 
 3. Do not run live burn unless there is a written sacrificial-wallet plan.

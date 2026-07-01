@@ -69,7 +69,7 @@ ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}" gradle testDebugUnitTe
 Run emulator smoke from the repo root:
 
 ```bash
-scripts/e2e-android-emulator.sh
+android-app/integration_test/run_e2e_tests.sh
 ```
 
 Open every screenshot under `.e2e/android-emulator/` before accepting Android UI work.
@@ -88,7 +88,7 @@ go test ./...
 Run local fake Telegram smoke:
 
 ```bash
-node scripts/e2e-telegram-bot.mjs
+telegram-bot/integration_test/run_e2e_tests.sh
 ```
 
 Run the bot:
@@ -107,19 +107,19 @@ Run contract tests:
 ```bash
 cd web3
 forge build
-forge test --no-match-path test/StakeEnforcerFork.t.sol
+forge test
 ```
 
 Run fork-local real token checks against canonical Ethereum/Polygon USDC/USDT contracts:
 
 ```bash
-scripts/e2e-web3-fork.sh
+web3/integration_test/run_e2e_tests.sh
 ```
 
 Public RPC defaults are provided for smoke checks. For acceptance or CI, use owned provider endpoints:
 
 ```bash
-ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... scripts/e2e-web3-fork.sh
+ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... web3/integration_test/run_e2e_tests.sh
 ```
 
 Verify mainnet deployment config before real approvals:
@@ -138,24 +138,24 @@ scripts/verify-mainnet-deploy.sh
 Run focused checks:
 
 ```bash
-(cd backend && go test ./...)
-(cd frontend && npm test && npm run build)
-(cd web3 && forge test --no-match-path test/StakeEnforcerFork.t.sol)
-scripts/e2e-web3-fork.sh
-(cd android-app && ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}" gradle testDebugUnitTest assembleDebug)
-(cd telegram-bot && go test ./...)
+scripts/run_unit_tests.sh
+backend/integration_test/run_e2e_tests.sh
+web3/integration_test/run_e2e_tests.sh
+telegram-bot/integration_test/run_e2e_tests.sh
+node integrations_tests/web_wallet_e2e.mjs
+node integrations_tests/own_agent_cron_e2e.mjs
 ```
 
 Run the full local suite from the repo root:
 
 ```bash
-scripts/e2e-local.sh
+integrations_tests/run_e2e_tests.sh
 ```
 
 Run Android UI smoke separately when Android UI or networking changes:
 
 ```bash
-scripts/e2e-android-emulator.sh
+android-app/integration_test/run_e2e_tests.sh
 ```
 
 After any UI smoke, open generated screenshots and record the visual judgment in [manual-test-evidence.md](manual-test-evidence.md).
@@ -165,19 +165,19 @@ After any UI smoke, open generated screenshots and record the visual judgment in
 Shape check:
 
 ```bash
-scripts/e2e-live-mainnet.sh shape
+scripts/live_mainnet_gate.sh shape
 ```
 
 Preflight with real values:
 
 ```bash
-ENV_FILE=.env.mainnet.local scripts/e2e-live-mainnet.sh preflight
+ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight
 ```
 
 Live burn is destructive. Run it only with an explicit sacrificial-wallet plan:
 
 ```bash
-ENV_FILE=.env.mainnet.local LIVE_E2E_CONFIRM=burn-real-funds scripts/e2e-live-mainnet.sh burn
+ENV_FILE=.env.mainnet.local LIVE_E2E_CONFIRM=burn-real-funds scripts/live_mainnet_gate.sh burn
 ```
 
 Never run live burn with placeholder env values, shared wallets, or funds the user is not prepared to lose.

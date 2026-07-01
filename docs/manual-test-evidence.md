@@ -745,3 +745,91 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - All required checks passed: yes for this Web3 fork-local redo and local acceptance gate
 - Known failures: none after rerun
 - Ready to launch: yes for local/staging handoff; live mainnet burn remains intentionally gated behind the sacrificial-wallet plan
+
+## 2026-07-01 Test Structure Cleanup
+
+### Run Context
+
+- Date/time: 2026-07-01 11:57 IDT
+- Workspace: `/Users/a.mametyev/PycharmProjects/target-app`
+- Branch: `main`
+- Tester/agent: Codex
+
+### Commands
+
+- Command: `scripts/run_unit_tests.sh`
+- Result: pass
+- Relevant output: backend tests under `backend/tests/`, frontend tests under `frontend/tests/`, Web3 tests under `web3/tests/`, Android JVM tests under `android-app/app/tests/`, and Telegram tests under `telegram-bot/tests/` all passed; layout guard found no tests outside `tests/` or `integration_test/`.
+
+- Command: `web3/integration_test/run_e2e_tests.sh`
+- Result: pass
+- Relevant output: 4 fork-local tests passed against Ethereum USDC, Ethereum USDT, Polygon USDC, and Polygon USDT.
+
+- Command: `telegram-bot/integration_test/run_e2e_tests.sh`
+- Result: pass
+- Relevant output: fake Telegram Bot API e2e passed, including private/group/channel text, channel voice, link code, and own-agent link.
+
+- Command: `backend/integration_test/run_e2e_tests.sh`
+- Result: pass
+- Relevant output: backend admin smoke passed; backend Web3 simulated-chain e2e passed.
+
+- Command: `node integrations_tests/web_wallet_e2e.mjs`
+- Result: pass
+- Relevant output: browser wallet/API/AI flow passed and Android API integration passed through the shared backend.
+
+- Command: `node integrations_tests/own_agent_cron_e2e.mjs`
+- Result: pass
+- Relevant output: own-agent private skill and daily reminder behavior passed.
+
+- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" android-app/integration_test/run_e2e_tests.sh`
+- Result: pass
+- Relevant output: Android emulator e2e passed and generated 8 PNG screenshots.
+
+- Command: `integrations_tests/run_e2e_tests.sh`
+- Result: pass after docs and runner changes
+- Relevant output: backend e2e passed; Web3 fork-local 4 tests passed; web wallet e2e passed; Telegram bot e2e passed; own-agent cron e2e passed; mainnet gate shape passed; Android emulator e2e passed; secret scan passed; integration suite passed.
+
+- Command: `scripts/live_mainnet_gate.sh shape`
+- Result: pass
+- Relevant output: live command build and mainnet handoff dry-run config passed.
+
+### Screenshot Review
+
+- Opened: `.e2e/android-emulator/portrait.png`
+- Result: pass; goals screen is readable, selected goal/actions are visible, no overlap or clipped button text.
+
+- Opened: `.e2e/android-emulator/goals-scrolled.png`
+- Result: pass; edit panel fields and destructive/archive actions are readable and separated.
+
+- Opened: `.e2e/android-emulator/chat.png`
+- Result: pass; chat input, send, voice, and reply area are visible without overlap.
+
+- Opened: `.e2e/android-emulator/chat-voice.png`
+- Result: pass; voice cancel error is readable and does not cover controls.
+
+- Opened: `.e2e/android-emulator/settings.png`
+- Result: pass; API connection and own-agent controls are visible, key remains masked.
+
+- Opened: `.e2e/android-emulator/settings-agent.png`
+- Result: pass; own-agent link result is visible and money-safety copy is readable.
+
+- Opened: `.e2e/android-emulator/settings-invalid-url.png`
+- Result: pass; invalid URL error is readable and form controls remain usable.
+
+- Opened: `.e2e/android-emulator/landscape.png`
+- Result: pass; landscape layout is usable, no clipped tab/button text or stuck loading.
+
+### Checklist Results
+
+- Unit and build: pass through the single monorepo unit runner.
+- Service e2e: pass through per-module `integration_test/run_e2e_tests.sh` runners.
+- System e2e: pass through `integrations_tests/run_e2e_tests.sh` after docs and runner changes.
+- Documentation: updated README, runbook, manual checklist, Web3 README, and the e2e coverage task to the new runner names.
+- Pre-commit: tracked hook added at `.githooks/pre-commit`; install via `scripts/install-hooks.sh`.
+
+### Unrun Checks
+
+- Check: live mainnet burn transaction with real wallet funds
+- Reason: destructive and still requires a written sacrificial-wallet plan plus real `.env.mainnet.local` secrets
+- Risk: deployed-provider or funded-wallet issues could appear only in live mainnet execution
+- Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence

@@ -78,6 +78,14 @@ func NewClient(rawBaseURL string) *Client {
 	}
 }
 
+func NewClientWithHTTP(rawBaseURL string, httpClient *http.Client) *Client {
+	client := NewClient(rawBaseURL)
+	if httpClient != nil {
+		client.http = httpClient
+	}
+	return client
+}
+
 func (c *Client) VerifyAPIKey(ctx context.Context, apiKey string) error {
 	var out map[string]string
 	return c.request(ctx, http.MethodGet, "/api/v1/me", apiKey, nil, &out)

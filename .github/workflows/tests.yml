@@ -1,0 +1,68 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.1.0
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: npm ci
+        working-directory: frontend
+      - run: scripts/run_unit_tests.sh
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.1.0
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: npm ci
+        working-directory: frontend
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Create Android AVD
+        run: |
+          sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
+          echo "no" | avdmanager create avd -f -n goalstakes_ci -k "system-images;android-35;google_apis;x86_64" --device "pixel_6"
+      - run: integrations_tests/run_e2e_tests.sh
+        env:
+          ANDROID_AVD_NAME: goalstakes_ci

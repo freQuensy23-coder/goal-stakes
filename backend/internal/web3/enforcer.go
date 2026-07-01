@@ -22,7 +22,7 @@ const stakeEnforcerABI = `[{"type":"constructor","inputs":[{"name":"enforcer_","
 
 const erc20ABI = `[{"type":"function","name":"allowance","inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"}]`
 
-var burnAddress = common.HexToAddress("0x000000000000000000000000000000000000dEaD")
+var BurnAddress = common.HexToAddress("0x000000000000000000000000000000000000dEaD")
 
 var expectedChainIDs = map[string]int64{
 	"ethereum":     1,
@@ -79,12 +79,12 @@ func NewEnforcer(ctx context.Context, chains map[string]config.ChainConfig, priv
 			return nil, fmt.Errorf("web3: dial chain %q: %w", name, err)
 		}
 		enforcerAddr := common.HexToAddress(cfg.StakeEnforcerAddress)
-		if err := validateExpectedChainID(ctx, name, client); err != nil {
+		if err := ValidateExpectedChainID(ctx, name, client); err != nil {
 			client.Close()
 			out.Close()
 			return nil, fmt.Errorf("web3: chain %q: %w", name, err)
 		}
-		if err := validateStakeEnforcerContract(ctx, client, enforcerABI, enforcerAddr, signerAddress); err != nil {
+		if err := ValidateStakeEnforcerContract(ctx, client, enforcerABI, enforcerAddr, signerAddress); err != nil {
 			client.Close()
 			out.Close()
 			return nil, fmt.Errorf("web3: chain %q: %w", name, err)
@@ -100,7 +100,7 @@ func NewEnforcer(ctx context.Context, chains map[string]config.ChainConfig, priv
 	return out, nil
 }
 
-func newEnforcerWithBackend(ctx context.Context, chain string, backend evmBackend, enforcerAddr common.Address, privateKeyHex string, close func()) (*Enforcer, error) {
+func NewEnforcerWithBackend(ctx context.Context, chain string, backend evmBackend, enforcerAddr common.Address, privateKeyHex string, close func()) (*Enforcer, error) {
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("web3: invalid ENFORCER_PRIVATE_KEY: %w", err)
@@ -114,7 +114,7 @@ func newEnforcerWithBackend(ctx context.Context, chain string, backend evmBacken
 	if err != nil {
 		return nil, err
 	}
-	if err := validateStakeEnforcerContract(ctx, backend, enforcerABI, enforcerAddr, signerAddress); err != nil {
+	if err := ValidateStakeEnforcerContract(ctx, backend, enforcerABI, enforcerAddr, signerAddress); err != nil {
 		return nil, fmt.Errorf("web3: chain %q: %w", chain, err)
 	}
 	return &Enforcer{
@@ -165,10 +165,10 @@ func (e *Enforcer) Penalize(ctx context.Context, chain, userWallet, tokenAddress
 		return "", fmt.Errorf("web3: penalize: %w", err)
 	}
 	receipt, err := bind.WaitMined(ctx, cc.client, tx)
-	return penaltyReceiptResult(tx.Hash(), receipt, err)
+	return PenaltyReceiptResult(tx.Hash(), receipt, err)
 }
 
-func penaltyReceiptResult(submittedHash common.Hash, receipt *types.Receipt, waitErr error) (string, error) {
+func PenaltyReceiptResult(submittedHash common.Hash, receipt *types.Receipt, waitErr error) (string, error) {
 	if waitErr != nil {
 		return submittedHash.Hex(), fmt.Errorf("web3: wait for penalize tx %s: %w", submittedHash.Hex(), waitErr)
 	}
@@ -181,7 +181,7 @@ func penaltyReceiptResult(submittedHash common.Hash, receipt *types.Receipt, wai
 	return receipt.TxHash.Hex(), nil
 }
 
-func validateStakeEnforcerContract(ctx context.Context, caller bind.ContractCaller, contractABI abi.ABI, contractAddress, expectedEnforcer common.Address) error {
+func ValidateStakeEnforcerContract(ctx context.Context, caller bind.ContractCaller, contractABI abi.ABI, contractAddress, expectedEnforcer common.Address) error {
 	code, err := caller.CodeAt(ctx, contractAddress, nil)
 	if err != nil {
 		return fmt.Errorf("read StakeEnforcer code at %s: %w", contractAddress.Hex(), err)
@@ -193,8 +193,8 @@ func validateStakeEnforcerContract(ctx context.Context, caller bind.ContractCall
 	if err != nil {
 		return fmt.Errorf("read StakeEnforcer %s BURN: %w", contractAddress.Hex(), err)
 	}
-	if burn != burnAddress {
-		return fmt.Errorf("StakeEnforcer %s BURN is %s, want %s", contractAddress.Hex(), burn.Hex(), burnAddress.Hex())
+	if burn != BurnAddress {
+		return fmt.Errorf("StakeEnforcer %s BURN is %s, want %s", contractAddress.Hex(), burn.Hex(), BurnAddress.Hex())
 	}
 	enforcer, err := readAddressConstant(ctx, caller, contractABI, contractAddress, "enforcer")
 	if err != nil {
@@ -210,7 +210,7 @@ type chainIDReader interface {
 	ChainID(context.Context) (*big.Int, error)
 }
 
-func validateExpectedChainID(ctx context.Context, chain string, backend chainIDReader) error {
+func ValidateExpectedChainID(ctx context.Context, chain string, backend chainIDReader) error {
 	want, ok := expectedChainIDs[chain]
 	if !ok {
 		return nil

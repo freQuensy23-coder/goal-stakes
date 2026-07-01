@@ -68,6 +68,14 @@ func NewClient(token, rawBaseURL string) *Client {
 	}
 }
 
+func NewClientWithHTTP(token, rawBaseURL string, httpClient *http.Client) *Client {
+	client := NewClient(token, rawBaseURL)
+	if httpClient != nil {
+		client.http = httpClient
+	}
+	return client
+}
+
 func (c *Client) GetUpdates(ctx context.Context, offset int64, timeoutSeconds int) ([]Update, error) {
 	query := url.Values{}
 	query.Set("offset", fmt.Sprintf("%d", offset))

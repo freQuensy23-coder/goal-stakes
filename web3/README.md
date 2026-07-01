@@ -23,8 +23,9 @@ pulling it from their allowance and **burning** it.
 web3/
   foundry.toml
   src/StakeEnforcer.sol         # the contract (+ minimal inline IERC20, _safeTransferFrom)
-  test/StakeEnforcer.t.sol      # Foundry tests
-  test/mocks/                   # MockERC20 (standard), MockUSDT (no bool), MockReturnsFalseERC20
+  tests/StakeEnforcer.t.sol     # Foundry unit tests
+  tests/mocks/                  # MockERC20 (standard), MockUSDT (no bool), MockReturnsFalseERC20
+  integration_test/             # fork-local real-token checks + runner
   script/Deploy.s.sol           # testnet deploy script (reads env)
   abi/StakeEnforcer.json        # exported ABI for backend abigen (IF1) — COMMITTED
   lib/forge-std/                # vendored test dep — GITIGNORED, see below
@@ -50,20 +51,20 @@ From `web3/`:
 
 ```sh
 forge build
-forge test --no-match-path test/StakeEnforcerFork.t.sol -vvv
+forge test -vvv
 ```
 
 From the repo root, run fork-local checks against canonical Ethereum/Polygon USDC/USDT
 contracts:
 
 ```sh
-scripts/e2e-web3-fork.sh
+web3/integration_test/run_e2e_tests.sh
 ```
 
 Use owned RPC endpoints for acceptance runs:
 
 ```sh
-ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... scripts/e2e-web3-fork.sh
+ETHEREUM_RPC_URL=https://... POLYGON_RPC_URL=https://... web3/integration_test/run_e2e_tests.sh
 ```
 
 The fork suite must show all four real-token cases passing. Mock-only tests or
@@ -137,9 +138,9 @@ scripts/verify-mainnet-deploy.sh
 The live e2e wrapper consumes the same deployment addresses from `.env.mainnet.local`:
 
 ```sh
-scripts/e2e-live-mainnet.sh shape
-ENV_FILE=.env.mainnet.local scripts/e2e-live-mainnet.sh preflight
-ENV_FILE=.env.mainnet.local LIVE_E2E_CONFIRM=burn-real-funds scripts/e2e-live-mainnet.sh burn
+scripts/live_mainnet_gate.sh shape
+ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight
+ENV_FILE=.env.mainnet.local LIVE_E2E_CONFIRM=burn-real-funds scripts/live_mainnet_gate.sh burn
 ```
 
 `burn` is destructive: it starts the Go API with live config, requires a prior MetaMask

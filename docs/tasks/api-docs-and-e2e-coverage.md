@@ -13,14 +13,14 @@ definition of done:
 - `backend/internal/api/openapi.go` includes all README-required public, private skill-link, and internal Telegram routes.
 - `docs/run.md` describes new env vars such as Telegram internal bot secret and public app/API base URLs.
 - `docs/manual-test-checklist.md` matches implemented commands, endpoints, and UI labels.
-- `scripts/e2e-local.sh` runs the updated backend, frontend, web3, Android JVM, Telegram, own-agent, and secret-scan checks.
-- `scripts/e2e-telegram-bot.mjs` covers link code, private/group/channel text, voice download, and `/agent`.
+- `integrations_tests/run_e2e_tests.sh` runs backend, Web3 fork-local, browser wallet/API/AI/Android-API, Telegram, own-agent, mainnet shape, Android emulator, and secret-scan checks.
+- `telegram-bot/integration_test/run_e2e_tests.sh` covers link code, private/group/channel text, voice download, and `/agent`.
 - Manual evidence file records command output and screenshot review for changed web and Android surfaces.
 
 test scenarios:
-- `scripts/e2e-local.sh` from repo root.
-- `node scripts/e2e-telegram-bot.mjs` from repo root.
-- `scripts/e2e-android-emulator.sh` when Android UI changes.
+- `integrations_tests/run_e2e_tests.sh` from repo root.
+- `telegram-bot/integration_test/run_e2e_tests.sh` from repo root.
+- `android-app/integration_test/run_e2e_tests.sh` when Android UI changes.
 - OpenAPI test: every README-required path exists in `/openapi.json`.
 - Docs review: no doc claims a feature is done without matching code or test evidence.
 - Secret scan: built frontend, logs, docs, and fixtures do not expose live secrets or generated raw agent secrets.
