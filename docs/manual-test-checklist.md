@@ -19,7 +19,8 @@ Use separate reviewers or subagents when possible:
 4. At least one full verification run happened after the last code change.
 5. No secret, private key, live API key, wallet seed phrase, Telegram token, or raw generated agent key is committed.
 6. Every failed check led to a fix, not only a note.
-7. The app still matches [../README.md](../README.md): arbitrary goals, crypto stake, burn-only penalty, backend-owned secrets, Telegram voice, own-agent skill links.
+7. Every unit/e2e runner enforces a 600-second total timeout. Every e2e runner also uses named stage timeouts and bounded condition waits for long-running external work.
+8. The app still matches [../README.md](../README.md): arbitrary goals, crypto stake, burn-only penalty, backend-owned secrets, Telegram voice, own-agent skill links.
 
 ## Setup
 
@@ -106,7 +107,9 @@ integrations_tests/run_e2e_tests.sh
 
 2. Confirm it runs backend service e2e, web3 fork-local real token checks, browser wallet/API/AI/Android-API e2e, Telegram fake Bot API e2e, own-agent cron e2e, mainnet shape check, Android emulator e2e, and secret-scan.
 3. Confirm `.e2e/manual-web/` contains current desktop and mobile screenshots.
-4. If any step fails, fix the root cause and rerun the full suite.
+4. Confirm the global runner and every module runner enforce a 600-second total timeout.
+5. Confirm the global runner and every module runner use named timeout env vars for long-running stages; do not accept unbounded `gradle`, `forge`, `go test`, `node`, Docker, or emulator setup commands.
+6. If any step fails, fix the root cause and rerun the full suite.
 
 ## Web Manual Checks
 
@@ -172,14 +175,15 @@ android-app/integration_test/run_e2e_tests.sh
 3. Fail if text is clipped, controls overlap, IDs must be manually copied, loading is stuck, or connection errors appear.
 4. Install debug APK on emulator.
 5. Save API URL and API key.
-6. Confirm settings persist after restart.
-7. Create/edit/archive goals.
-8. Check in and report violation.
-9. Confirm progress and violation counts update.
-10. Send chat text and voice transcript.
-11. Deny voice input and confirm friendly fallback.
-12. Click `Connect own agent` and verify private skill link output.
-13. Rotate device and confirm layout remains usable.
+6. Confirm e2e setup reads back seeded settings before launch; do not accept a run that silently falls back to default `10.0.2.2:8080`.
+7. Confirm settings persist after restart.
+8. Create/edit/archive goals.
+9. Check in and report violation.
+10. Confirm progress and violation counts update.
+11. Send chat text and voice transcript.
+12. Deny voice input and confirm friendly fallback.
+13. Click `Connect own agent` and verify private skill link output.
+14. Rotate device and confirm layout remains usable.
 
 ## Telegram Manual Checks
 

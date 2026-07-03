@@ -16,6 +16,33 @@ TAB_Y="${ANDROID_TAB_Y:-568}"
 mkdir -p "$EVIDENCE_DIR"
 rm -f "$EVIDENCE_DIR"/*.png "$EVIDENCE_DIR"/window-*.xml
 
+run_with_timeout() {
+  local seconds="$1"
+  local label="$2"
+  shift 2
+
+  "$@" &
+  local pid=$!
+  local deadline=$((SECONDS + seconds))
+  while kill -0 "$pid" >/dev/null 2>&1; do
+    if (( SECONDS >= deadline )); then
+      echo "$label timed out after ${seconds}s" >&2
+      kill "$pid" >/dev/null 2>&1 || true
+      sleep 2
+      kill -9 "$pid" >/dev/null 2>&1 || true
+      wait "$pid" >/dev/null 2>&1 || true
+      return 124
+    fi
+    sleep 1
+  done
+  wait "$pid"
+}
+
+if [[ "${GOALSTAKES_ANDROID_E2E_TIMEOUT_CHILD:-}" != "1" ]]; then
+  run_with_timeout "${ANDROID_E2E_TOTAL_TIMEOUT_SECONDS:-600}" "android emulator e2e total" env GOALSTAKES_ANDROID_E2E_TIMEOUT_CHILD=1 "$0" "$@"
+  exit $?
+fi
+
 started_emulator=0
 emulator_pid=""
 api_pid=""
@@ -99,15 +126,25 @@ done
 "$ADB" shell input keyevent 82 >/dev/null 2>&1 || true
 
 echo "installing and launching app"
-(cd "$ROOT/android-app" && ANDROID_HOME="$ANDROID_HOME" gradle installDebug >/tmp/goalstakes-android-install.log)
+(cd "$ROOT/android-app" && run_with_timeout "${ANDROID_E2E_INSTALL_TIMEOUT_SECONDS:-300}" "android installDebug" env ANDROID_HOME="$ANDROID_HOME" gradle installDebug) >/tmp/goalstakes-android-install.log 2>&1
 cp /tmp/goalstakes-android-install.log "$EVIDENCE_DIR/install.log"
 
 "$ADB" shell pm clear "$PACKAGE" >/dev/null 2>&1 || true
-prefs_xml="<?xml version='1.0' encoding='utf-8' standalone='yes' ?><map><string name=\"base_url\">${API_BASE}</string><string name=\"api_key\">sk_android_smoke</string></map>"
-printf '%s\n' "$prefs_xml" | "$ADB" exec-in run-as "$PACKAGE" sh -c 'mkdir -p shared_prefs && cat > shared_prefs/goalstakes.xml'
+prefs_xml="<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\" ?><map><string name=\"base_url\">${API_BASE}</string><string name=\"api_key\">sk_android_smoke</string></map>"
+"$ADB" exec-out run-as "$PACKAGE" sh -c "mkdir -p shared_prefs && printf '%s\n' '$prefs_xml' > shared_prefs/goalstakes.xml" >/dev/null
+"$ADB" exec-out run-as "$PACKAGE" cat shared_prefs/goalstakes.xml > "$EVIDENCE_DIR/prefs.xml"
+if ! grep -Fq "$API_BASE" "$EVIDENCE_DIR/prefs.xml" || ! grep -Fq "sk_android_smoke" "$EVIDENCE_DIR/prefs.xml"; then
+  echo "Android shared preferences were not preseeded correctly" >&2
+  cat "$EVIDENCE_DIR/prefs.xml" >&2 || true
+  exit 1
+fi
 
 "$ADB" shell logcat -c >/dev/null 2>&1 || true
-"$ADB" shell am start -n "$PACKAGE/.MainActivity" >"$EVIDENCE_DIR/launch.log" 2>&1
+start_goalstakes_app() {
+  "$ADB" shell am start -n "$PACKAGE/.MainActivity"
+}
+
+start_goalstakes_app >"$EVIDENCE_DIR/launch.log" 2>&1
 app_started=0
 for _ in {1..15}; do
   if "$ADB" shell pidof "$PACKAGE" >/dev/null 2>&1; then
@@ -123,15 +160,68 @@ if [[ "$app_started" != "1" ]]; then
   tail -n 120 "$EVIDENCE_DIR/logcat-launch.log" >&2 || true
   exit 1
 fi
-dump_window() {
+
+raw_dump_window() {
   local name="$1"
   "$ADB" shell uiautomator dump /sdcard/goalstakes-window.xml >/dev/null 2>&1
   "$ADB" exec-out cat /sdcard/goalstakes-window.xml > "$EVIDENCE_DIR/$name"
-  if grep -q "isn't responding" "$EVIDENCE_DIR/$name" && grep -q 'text="Wait"' "$EVIDENCE_DIR/$name"; then
+}
+
+dismiss_anr_dialog() {
+  local name="$1"
+  if ! grep -q "isn't responding" "$EVIDENCE_DIR/$name"; then
+    return 1
+  fi
+
+  if grep -q "package=\"$PACKAGE\"" "$EVIDENCE_DIR/$name"; then
     tap_window_node "$name" "Wait" || true
     sleep 2
-    "$ADB" shell uiautomator dump /sdcard/goalstakes-window.xml >/dev/null 2>&1
-    "$ADB" exec-out cat /sdcard/goalstakes-window.xml > "$EVIDENCE_DIR/$name"
+    return 0
+  fi
+
+  tap_window_node "$name" "Close app" || tap_window_node "$name" "Wait" || true
+  sleep 1
+  start_goalstakes_app >/dev/null 2>&1 || true
+  return 0
+}
+
+ensure_goalstakes_foreground() {
+  local name="$1"
+  if grep -q "package=\"$PACKAGE\"" "$EVIDENCE_DIR/$name"; then
+    return 0
+  fi
+  if grep -q "isn't responding" "$EVIDENCE_DIR/$name"; then
+    return 0
+  fi
+
+  local seen_package
+  seen_package="$(sed -n 's/.*package="\([^"]*\)".*/\1/p' "$EVIDENCE_DIR/$name" | head -n 1)"
+  seen_package="${seen_package:-unknown}"
+  echo "Android app lost foreground to ${seen_package}; relaunching Goal Stakes" >&2
+  start_goalstakes_app >/dev/null 2>&1 || true
+  for _ in {1..20}; do
+    sleep 0.5
+    raw_dump_window "$name"
+    if grep -q "package=\"$PACKAGE\"" "$EVIDENCE_DIR/$name"; then
+      return 0
+    fi
+    dismiss_anr_dialog "$name" || true
+  done
+
+  echo "Goal Stakes did not return to foreground" >&2
+  tail -n 80 "$EVIDENCE_DIR/$name" >&2 || true
+  "$ADB" shell logcat -d -t 120 >&2 2>/dev/null || true
+  exit 1
+}
+
+dump_window() {
+  local name="$1"
+  raw_dump_window "$name"
+  ensure_goalstakes_foreground "$name"
+  if grep -q "isn't responding" "$EVIDENCE_DIR/$name" && grep -q 'text="Wait"' "$EVIDENCE_DIR/$name"; then
+    dismiss_anr_dialog "$name" || true
+    raw_dump_window "$name"
+    ensure_goalstakes_foreground "$name"
   fi
 }
 
@@ -252,10 +342,11 @@ clear_focused_text() {
 }
 
 hide_keyboard() {
-  if "$ADB" shell dumpsys input_method 2>/dev/null | tr -d '\r' | grep -Eq "mInputShown=true|mIsInputViewShown=true"; then
+  raw_dump_window "window-keyboard.xml"
+  if grep -q 'class="android.widget.EditText"[^>]*focused="true"' "$EVIDENCE_DIR/window-keyboard.xml"; then
     "$ADB" shell input keyevent 4 >/dev/null 2>&1 || true
   else
-    "$ADB" shell input keyevent 111 >/dev/null 2>&1 || true
+    "$ADB" shell input tap 540 430 >/dev/null 2>&1 || true
   fi
   sleep 0.5
 }
@@ -327,6 +418,8 @@ NODE
     sleep 0.5
   done
   echo "Could not reveal '$text' in Android UI" >&2
+  tail -n 80 "$EVIDENCE_DIR/window-find.xml" >&2 || true
+  "$ADB" shell logcat -d -t 120 >&2 2>/dev/null || true
   exit 1
 }
 
@@ -337,7 +430,7 @@ assert_api_goal() {
   local file="$EVIDENCE_DIR/ui-flow-goals.json"
   for _ in {1..20}; do
     curl -fsS "$HOST_API_BASE/api/v1/goals" > "$file"
-    if node - "$file" "$id" "$title" "$stake" <<'NODE'
+    if node - "$file" "$id" "$title" "$stake" 2>/dev/null <<'NODE'
 const fs = require("node:fs");
 const [file, id, title, stake] = process.argv.slice(2);
 const goals = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -368,7 +461,7 @@ assert_api_goal_missing() {
   local file="$EVIDENCE_DIR/ui-flow-goals.json"
   for _ in {1..20}; do
     curl -fsS "$HOST_API_BASE/api/v1/goals" > "$file"
-    if node - "$file" "$id" <<'NODE'
+    if node - "$file" "$id" 2>/dev/null <<'NODE'
 const fs = require("node:fs");
 const [file, id] = process.argv.slice(2);
 const goals = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -412,8 +505,7 @@ fi
 
 found_goal=0
 for i in {1..8}; do
-  "$ADB" shell uiautomator dump /sdcard/goalstakes-window.xml >/dev/null 2>&1
-  "$ADB" exec-out cat /sdcard/goalstakes-window.xml > "$EVIDENCE_DIR/window-scroll-${i}.xml"
+  dump_window "window-scroll-${i}.xml"
   if grep -q "Android smoke goal" "$EVIDENCE_DIR/window-scroll-${i}.xml"; then
     cp "$EVIDENCE_DIR/window-scroll-${i}.xml" "$EVIDENCE_DIR/window-goal-visible.xml"
     found_goal=1
@@ -457,6 +549,7 @@ tap_edit_text "$API_BASE"
 clear_focused_text
 adb_input_text "not_a_url"
 hide_keyboard
+swipe_to_text "Test connection"
 tap_text "Test connection"
 sleep 0.8
 wait_for_window_text "window-settings-invalid-url.xml" "API URL must start with http:// or https://"
@@ -489,6 +582,12 @@ assert_window_text "window-ui-flow-progress.xml" "Completed: yes | violations: 0
 
 tap_tab_text "Goals"
 sleep 1
+dump_window "window-action.xml"
+if ! grep -Eq "Hide edit panel|Archive selected goal" "$EVIDENCE_DIR/window-action.xml"; then
+  swipe_to_text "Edit selected goal" "earlier"
+  tap_text "Edit selected goal"
+  sleep 0.7
+fi
 swipe_to_text "Archive selected goal"
 tap_text "Archive selected goal"
 sleep 1.2
@@ -505,8 +604,9 @@ swipe_to_text "Stake amount, e.g. 100"
 tap_edit_text "Stake amount, e.g. 100"
 adb_input_text "2.5"
 hide_keyboard
-"$ADB" shell input keyevent 4 >/dev/null 2>&1 || true
-sleep 0.8
+dump_window "window-ui-flow-created-draft.xml"
+assert_window_text "window-ui-flow-created-draft.xml" "Android UI created"
+assert_window_text "window-ui-flow-created-draft.xml" "2.5"
 swipe_to_text "Create goal"
 tap_text "Create goal"
 sleep 1.2

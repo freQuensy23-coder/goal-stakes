@@ -3,6 +3,33 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+run_with_timeout() {
+  local seconds="$1"
+  local label="$2"
+  shift 2
+
+  "$@" &
+  local pid=$!
+  local deadline=$((SECONDS + seconds))
+  while kill -0 "$pid" >/dev/null 2>&1; do
+    if (( SECONDS >= deadline )); then
+      echo "$label timed out after ${seconds}s" >&2
+      kill "$pid" >/dev/null 2>&1 || true
+      sleep 2
+      kill -9 "$pid" >/dev/null 2>&1 || true
+      wait "$pid" >/dev/null 2>&1 || true
+      return 124
+    fi
+    sleep 1
+  done
+  wait "$pid"
+}
+
+if [[ "${GOALSTAKES_UNIT_TIMEOUT_CHILD:-}" != "1" ]]; then
+  run_with_timeout "${UNIT_TEST_TIMEOUT_SECONDS:-600}" "unit test suite" env GOALSTAKES_UNIT_TIMEOUT_CHILD=1 "$0" "$@"
+  exit $?
+fi
+
 echo "== test layout guard =="
 bad_locations="$(
   find "$ROOT" \

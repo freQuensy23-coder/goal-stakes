@@ -922,3 +922,172 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Reason: destructive and still requires a written sacrificial-wallet plan plus real `.env.mainnet.local` secrets
 - Risk: deployed-provider or funded-wallet issues could appear only in live mainnet execution
 - Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence
+
+## 2026-07-01 Bounded E2E Timeout And Android Recovery Fix
+
+### Run Context
+
+- Date/time: 2026-07-01 14:53 IDT
+- Workspace: `/Users/a.mametyev/PycharmProjects/target-app`
+- Branch: `main`
+- Base commit before this fix: `525c393`
+- Tester/agent: Codex
+- Scope: make e2e runners bounded, keep the documented test layout, and fix Android e2e flakes that made CI red.
+
+### Failure Root Causes
+
+- GitHub Actions run `28512699173` failed in Android emulator e2e at `Could not reveal 'Archive selected goal'`.
+- Local Android reproduction failed when the app lost foreground to Google system surfaces; the runner kept acting against stale or reset UI state.
+- Local full-suite reproduction failed on `Speech Services by Google isn't responding`; a system ANR dialog blocked Goal Stakes and the runner could not dismiss it.
+- Local Android reproduction also exposed an unverified settings preseed: the app sometimes used default `http://10.0.2.2:8080` instead of the smoke API `http://10.0.2.2:18080`.
+- These were test-runner defects, not reasons to delete Android coverage.
+
+### Fixes Applied
+
+- Added named stage timeouts to the global system e2e runner and each module e2e runner.
+- Android runner now taps tab buttons by visible UI text, waits for expected screen text, and prints UI dump/logcat on assertion failure.
+- Android runner now verifies Goal Stakes remains foreground during UI dumps and handles system ANR dialogs before continuing.
+- Android runner now writes and reads back `shared_prefs/goalstakes.xml` before launch; it fails setup if API URL/API key were not seeded.
+- Android create-goal flow now asserts the typed title and stake are still visible before tapping `Create goal`, so a foreground relaunch cannot silently create a default goal.
+- `AGENTS.md` and `docs/manual-test-checklist.md` now require named e2e timeouts and bounded waits.
+
+### Commands
+
+- Command: `bash -n backend/integration_test/run_e2e_tests.sh web3/integration_test/run_e2e_tests.sh telegram-bot/integration_test/run_e2e_tests.sh android-app/integration_test/run_e2e_tests.sh integrations_tests/run_e2e_tests.sh`
+- Result: pass
+- Relevant output: no shell syntax errors.
+
+- Command: `git diff --check`
+- Result: pass
+- Relevant output: no whitespace errors.
+
+- Command: `ANDROID_HOME="$HOME/Library/Android/sdk" android-app/integration_test/run_e2e_tests.sh`
+- Result: pass after fixes
+- Relevant output: `android emulator e2e passed`; generated portrait, goals-scrolled, chat, chat-voice, settings, settings-agent, settings-invalid-url, and landscape PNGs.
+
+- Command: `integrations_tests/run_e2e_tests.sh`
+- Result: pass after fixes
+- Relevant output: backend e2e passed; Web3 fork-local real-token checks passed 4/4; web wallet/API/AI/Android-API e2e passed; Telegram bot e2e passed; own-agent cron e2e passed; mainnet gate shape passed; Android emulator e2e passed; secret scan passed; `integration suite passed`.
+
+- Command: `scripts/run_unit_tests.sh`
+- Result: pass
+- Relevant output: layout guard passed; backend, frontend, Web3, Android JVM/build, and Telegram unit suites passed; `unit suite passed`.
+
+- Command: `rg -n "scripts/e2e-|e2e-local|e2e-web-wallet|e2e-telegram|e2e-android|e2e-own-agent|e2e-backend|e2e-web3|\\.env\\.mainnet\\.example|manual_checklist\\.md|test_support" -S . .github -g '!AGENTS.md' -g '!docs/manual-test-checklist.md' -g '!docs/manual-test-evidence.md'`
+- Result: pass
+- Relevant output: no matches.
+
+### Screenshot Review
+
+- Opened: `.e2e/android-emulator/portrait.png`
+- Result: pass; Goals screen is readable, selected goal/actions visible, no clipped button text.
+
+- Opened: `.e2e/android-emulator/goals-scrolled.png`
+- Result: pass; edit fields and archive action are readable and separated.
+
+- Opened: `.e2e/android-emulator/chat.png`
+- Result: pass; chat input, Send, Voice, and reply area are visible without overlap.
+
+- Opened: `.e2e/android-emulator/chat-voice.png`
+- Result: pass; voice cancellation/fallback error is visible and does not block controls.
+
+- Opened: `.e2e/android-emulator/settings.png`
+- Result: pass; API URL is `http://10.0.2.2:18080`, API key is masked, own-agent entry is visible.
+
+- Opened: `.e2e/android-emulator/settings-agent.png`
+- Result: pass; own-agent skill link is visible and money-safety copy is readable.
+
+- Opened: `.e2e/android-emulator/settings-invalid-url.png`
+- Result: pass; invalid URL error is readable and form controls remain usable.
+
+- Opened: `.e2e/android-emulator/landscape.png`
+- Result: pass; landscape layout is nonblank and usable with no critical overlap.
+
+### Checklist Results
+
+- Unit and build: pass through `scripts/run_unit_tests.sh`.
+- Per-module e2e: pass for Android standalone; other module runners pass as part of the full system runner.
+- System e2e: pass through `integrations_tests/run_e2e_tests.sh`.
+- Web3 fork-local: pass 4/4 against real forked USDC/USDT token contracts on Ethereum and Polygon.
+- Android manual screenshot review: pass; every fresh PNG was opened and visually checked.
+- Test layout contract: pass; no ad-hoc e2e scripts or shared helper outside the documented flow.
+
+### Unrun Checks
+
+- Check: live mainnet burn transaction with real wallet funds
+- Reason: destructive and still requires a written sacrificial-wallet plan plus real `.env.mainnet.local` secrets
+- Risk: funded-wallet/provider issues could appear only in live mainnet execution
+- Required follow-up: before production mainnet launch, run `ENV_FILE=.env.mainnet.local scripts/live_mainnet_gate.sh preflight`, then run `burn` only with `LIVE_E2E_CONFIRM=burn-real-funds` and recorded wallet/allowance/balance evidence
+
+## 2026-07-03 Ten-Minute Test Timeout Enforcement
+
+### Run Context
+
+- Date/time: 2026-07-03 15:53 IDT
+- Workspace: `/Users/a.mametyev/PycharmProjects/target-app`
+- Branch: `main`
+- Tester/agent: Codex
+- Scope: enforce the rule that test runs must not exceed 10 minutes, without deleting tests or narrowing coverage.
+
+### Fixes Applied
+
+- `scripts/run_unit_tests.sh` now runs under `UNIT_TEST_TIMEOUT_SECONDS`, default `600`.
+- `integrations_tests/run_e2e_tests.sh` now runs under `E2E_TOTAL_TIMEOUT_SECONDS`, default `600`.
+- Backend, Web3, Telegram, and Android module e2e runners now each enforce a 600-second total timeout when run directly.
+- GitHub Actions unit and integration jobs now have `timeout-minutes: 10`, and the actual unit/e2e run steps also have `timeout-minutes: 10`.
+- Android stage timeout in the global e2e runner is now 600 seconds, not 900.
+- `AGENTS.md` and `docs/manual-test-checklist.md` now state the 600-second total timeout contract.
+
+### Commands
+
+- Command: `bash -n scripts/run_unit_tests.sh backend/integration_test/run_e2e_tests.sh web3/integration_test/run_e2e_tests.sh telegram-bot/integration_test/run_e2e_tests.sh android-app/integration_test/run_e2e_tests.sh integrations_tests/run_e2e_tests.sh && git diff --check`
+- Result: pass
+- Relevant output: no shell syntax or whitespace errors.
+
+- Command: `rg -n "timeout-minutes:|E2E_TOTAL_TIMEOUT_SECONDS|TOTAL_TIMEOUT_SECONDS|UNIT_TEST_TIMEOUT_SECONDS|900|60" .github scripts integrations_tests backend/integration_test web3/integration_test telegram-bot/integration_test android-app/integration_test AGENTS.md docs/manual-test-checklist.md -S`
+- Result: pass
+- Relevant output: CI test jobs/steps show `timeout-minutes: 10`; direct runners show default `600` total timeout. Remaining numeric matches are token addresses, UI coordinates, and the allowed 60-second secret-scan/mainnet-shape substage.
+
+- Command: `/usr/bin/time -p scripts/run_unit_tests.sh`
+- Result: pass
+- Relevant output: `unit suite passed`; `real 13.08`.
+
+- Command: `/usr/bin/time -p integrations_tests/run_e2e_tests.sh`
+- First result: environment failure before tests
+- Relevant output: Docker daemon was not running: `Cannot connect to the Docker daemon`.
+- Fix applied: started Docker locally and reran the same command.
+- Rerun result: pass
+- Relevant output: backend e2e passed; Web3 fork-local 4/4 passed; web wallet e2e passed; Telegram bot e2e passed; own-agent cron passed; mainnet shape passed; Android emulator e2e passed; secret scan passed; `integration suite passed`; `real 249.71`.
+
+### Screenshot Review
+
+- Opened: `.e2e/android-emulator/portrait.png`
+- Result: pass; goals screen readable, selected goal/actions visible, no clipped controls.
+
+- Opened: `.e2e/android-emulator/goals-scrolled.png`
+- Result: pass; edit fields and archive action readable.
+
+- Opened: `.e2e/android-emulator/chat.png`
+- Result: pass; chat input, Send, Voice, and reply area visible without overlap.
+
+- Opened: `.e2e/android-emulator/chat-voice.png`
+- Result: pass; voice fallback error visible and controls remain usable.
+
+- Opened: `.e2e/android-emulator/settings.png`
+- Result: pass; API URL is `http://10.0.2.2:18080`, API key masked, own-agent control visible.
+
+- Opened: `.e2e/android-emulator/settings-agent.png`
+- Result: pass; own-agent skill link visible and safety copy readable.
+
+- Opened: `.e2e/android-emulator/settings-invalid-url.png`
+- Result: pass; invalid URL error visible and form still usable.
+
+- Opened: `.e2e/android-emulator/landscape.png`
+- Result: pass; landscape screen nonblank, readable, and usable.
+
+### Decision
+
+- Unit runner under 10 minutes: pass.
+- Full system e2e under 10 minutes: pass.
+- CI timeout contract updated: pass.
+- Tests deleted to pass: no.

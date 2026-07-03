@@ -7,6 +7,33 @@ API_BIN="$EVIDENCE_DIR/api.bin"
 mkdir -p "$EVIDENCE_DIR"
 rm -f "$EVIDENCE_DIR"/*.log "$EVIDENCE_DIR"/*.json "$EVIDENCE_DIR"/*.txt "$API_BIN"
 
+run_with_timeout() {
+  local seconds="$1"
+  local label="$2"
+  shift 2
+
+  "$@" &
+  local pid=$!
+  local deadline=$((SECONDS + seconds))
+  while kill -0 "$pid" >/dev/null 2>&1; do
+    if (( SECONDS >= deadline )); then
+      echo "$label timed out after ${seconds}s" >&2
+      kill "$pid" >/dev/null 2>&1 || true
+      sleep 2
+      kill -9 "$pid" >/dev/null 2>&1 || true
+      wait "$pid" >/dev/null 2>&1 || true
+      return 124
+    fi
+    sleep 1
+  done
+  wait "$pid"
+}
+
+if [[ "${GOALSTAKES_BACKEND_E2E_TIMEOUT_CHILD:-}" != "1" ]]; then
+  run_with_timeout "${BACKEND_E2E_TOTAL_TIMEOUT_SECONDS:-600}" "backend e2e total" env GOALSTAKES_BACKEND_E2E_TIMEOUT_CHILD=1 "$0" "$@"
+  exit $?
+fi
+
 API_PID=""
 cleanup() {
   if [[ -n "$API_PID" ]] && kill -0 "$API_PID" >/dev/null 2>&1; then
@@ -107,13 +134,13 @@ API_PORT="$(free_port)"
 API_BASE="http://127.0.0.1:${API_PORT}"
 
 echo "== backend dependency warmup =="
-(cd "$ROOT/backend" && go mod download)
+(cd "$ROOT/backend" && run_with_timeout "${BACKEND_E2E_DEPS_TIMEOUT_SECONDS:-120}" "backend dependency warmup" go mod download)
 
 echo "== backend binary build =="
-(cd "$ROOT/backend" && go build -o "$API_BIN" ./cmd/api)
+(cd "$ROOT/backend" && run_with_timeout "${BACKEND_E2E_BUILD_TIMEOUT_SECONDS:-120}" "backend binary build" go build -o "$API_BIN" ./cmd/api)
 
 echo "== backend admin services =="
-(cd "$ROOT" && docker compose up -d)
+(cd "$ROOT" && run_with_timeout "${BACKEND_E2E_COMPOSE_TIMEOUT_SECONDS:-120}" "backend docker compose up" docker compose up -d)
 for i in {1..40}; do
   if (cd "$ROOT" && docker compose exec -T postgres pg_isready -U goalstakes -d goalstakes >/dev/null 2>&1); then
     break
@@ -169,7 +196,7 @@ curl -fsS "$API_BASE/docs" -o "$EVIDENCE_DIR/docs.html"
 grep -q "Goal Stakes API" "$EVIDENCE_DIR/docs.html"
 
 echo "== backend migrations =="
-(cd "$ROOT" && docker compose exec -T postgres psql -U goalstakes -d goalstakes -tAc "select max(version_id) from goose_db_version") >"$EVIDENCE_DIR/goose-version.txt"
+(cd "$ROOT" && run_with_timeout "${BACKEND_E2E_DB_QUERY_TIMEOUT_SECONDS:-30}" "backend migration version query" docker compose exec -T postgres psql -U goalstakes -d goalstakes -tAc "select max(version_id) from goose_db_version") >"$EVIDENCE_DIR/goose-version.txt"
 expected_migration="$(
   find "$ROOT/backend/migrations" -maxdepth 1 -name '[0-9][0-9][0-9][0-9]_*.sql' -print |
     sed -E 's#^.*/([0-9]{4})_.*#\1#' |
@@ -234,7 +261,7 @@ if grep -Eq "$JWT_SECRET_SENTINEL|$AUTH_SENTINEL|Authorization" "$EVIDENCE_DIR/a
 fi
 
 echo "== backend web3 simulated e2e =="
-(cd "$ROOT/web3" && forge build)
-(cd "$ROOT/backend" && go test -tags e2e ./integration_test/... -count=1)
+(cd "$ROOT/web3" && run_with_timeout "${BACKEND_E2E_WEB3_BUILD_TIMEOUT_SECONDS:-120}" "backend web3 contract build" forge build)
+(cd "$ROOT/backend" && run_with_timeout "${BACKEND_E2E_GO_TEST_TIMEOUT_SECONDS:-180}" "backend go e2e tests" go test -tags e2e ./integration_test/... -count=1)
 
 echo "backend e2e passed"
