@@ -1091,3 +1091,58 @@ Record fresh proof here after running the checklist. Do not keep old pass claims
 - Full system e2e under 10 minutes: pass.
 - CI timeout contract updated: pass.
 - Tests deleted to pass: no.
+
+## 2026-07-03 Android Own-Agent E2E Stabilization
+
+### Run Context
+
+- Date/time: 2026-07-03 16:20 IDT
+- Workspace: `/Users/a.mametyev/PycharmProjects/target-app`
+- Branch: `main`
+- Scope: fix the Android full-suite failure where the own-agent UI action could be missed in the system e2e route.
+
+### Root Cause
+
+- GitHub Actions run `28661950783` failed in Android e2e after 6m29s.
+- The first failure came from `swipe_to_text`, which treated a visible `Archive selected goal` button as below the screen because it used a hard-coded `2150` lower bound on a `2400px` emulator.
+- The next local full-suite failure showed that `Connect own agent` could be tapped without the UI generating a link; the runner then scrolled looking for the skill URL while the screen still said `No agent link generated yet`.
+
+### Fixes Applied
+
+- `swipe_to_text` now computes its lower boundary from the current UI hierarchy instead of a fixed pixel constant.
+- Android UI text assertions now use literal matching for URLs and status text.
+- The own-agent flow now uses `tap_text_until_window_text`: it retries `Connect own agent` until the UI shows `Own-agent link generated`, then scrolls to the exact generated skill URL.
+
+### Commands
+
+- Command: `bash -n android-app/integration_test/run_e2e_tests.sh`
+- Result: pass
+
+- Command: `/usr/bin/time -p android-app/integration_test/run_e2e_tests.sh`
+- Result: pass
+- Relevant output: `android emulator e2e passed`; `real 184.22`.
+
+- Command: `/usr/bin/time -p integrations_tests/run_e2e_tests.sh`
+- Result: pass
+- Relevant output: backend e2e passed; Web3 fork-local 4/4 passed; web wallet e2e passed; Telegram bot e2e passed; own-agent cron passed; mainnet shape passed; Android emulator e2e passed; secret scan passed; `integration suite passed`; `real 241.73`.
+
+### Screenshot Review
+
+- Opened: `.e2e/android-emulator/settings-agent.png`
+- Result: pass; `Own-agent link generated` is visible and the full `http://10.0.2.2:18080/agent-skills/agt_android.md` link is readable.
+
+- Opened: `.e2e/android-emulator/goals-scrolled.png`
+- Result: pass; edit controls and `Archive selected goal` are visible and not clipped.
+
+- Opened: `.e2e/android-emulator/settings-invalid-url.png`
+- Result: pass; invalid URL error is readable and controls remain usable.
+
+- Opened: `.e2e/android-emulator/landscape.png`
+- Result: pass; landscape screen is nonblank and usable.
+
+### Decision
+
+- Android own-agent e2e race fixed: pass.
+- Full system e2e under 10 minutes: pass.
+- Fresh screenshots manually opened: pass.
+- Tests deleted to pass: no.

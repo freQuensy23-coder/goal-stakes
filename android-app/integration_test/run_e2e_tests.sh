@@ -11,6 +11,7 @@ PACKAGE="com.goalstakes.mobile"
 API_PORT="${GOALSTAKES_ANDROID_API_PORT:-18080}"
 API_BASE="http://10.0.2.2:${API_PORT}"
 HOST_API_BASE="http://127.0.0.1:${API_PORT}"
+AGENT_SKILL_URL="${API_BASE}/agent-skills/agt_android.md"
 TAB_Y="${ANDROID_TAB_Y:-568}"
 
 mkdir -p "$EVIDENCE_DIR"
@@ -228,7 +229,7 @@ dump_window() {
 assert_window_text() {
   local file="$1"
   local text="$2"
-  if ! grep -q "$text" "$EVIDENCE_DIR/$file"; then
+  if ! grep -Fq "$text" "$EVIDENCE_DIR/$file"; then
     echo "Expected '$text' in Android UI dump $file" >&2
     tail -n 80 "$EVIDENCE_DIR/$file" >&2 || true
     "$ADB" shell logcat -d -t 120 >&2 2>/dev/null || true
@@ -240,7 +241,7 @@ assert_window_any_text() {
   local file="$1"
   shift
   for text in "$@"; do
-    if grep -q "$text" "$EVIDENCE_DIR/$file"; then
+    if grep -Fq "$text" "$EVIDENCE_DIR/$file"; then
       return 0
     fi
   done
@@ -306,14 +307,42 @@ wait_for_window_text() {
   local file="$1"
   local text="$2"
   local attempts="${3:-20}"
+  if window_has_text "$file" "$text" "$attempts"; then
+    return 0
+  fi
+  assert_window_text "$file" "$text"
+}
+
+window_has_text() {
+  local file="$1"
+  local text="$2"
+  local attempts="${3:-20}"
   for _ in $(seq 1 "$attempts"); do
     dump_window "$file"
-    if grep -q "$text" "$EVIDENCE_DIR/$file"; then
+    if grep -Fq "$text" "$EVIDENCE_DIR/$file"; then
       return 0
     fi
     sleep 0.5
   done
-  assert_window_text "$file" "$text"
+  return 1
+}
+
+tap_text_until_window_text() {
+  local button_text="$1"
+  local expected_text="$2"
+  local file="$3"
+  local attempts="${4:-3}"
+  for _ in $(seq 1 "$attempts"); do
+    swipe_to_text "$button_text"
+    tap_text "$button_text"
+    if window_has_text "$file" "$expected_text" 10; then
+      return 0
+    fi
+  done
+  echo "Tapped '$button_text' but '$expected_text' did not appear in Android UI" >&2
+  tail -n 80 "$EVIDENCE_DIR/$file" >&2 || true
+  "$ADB" shell logcat -d -t 120 >&2 2>/dev/null || true
+  exit 1
 }
 
 tap_text() {
@@ -386,14 +415,18 @@ for (const tag of tags) {
   const text = attr(tag, "text");
   const desc = attr(tag, "content-desc");
   if (text !== target && desc !== target) continue;
+  const rootMatch = xml.match(/<hierarchy\b[^>]*><node\b[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
+  const screenBottom = rootMatch ? Number(rootMatch[4]) : 2400;
+  const topLimit = 540;
+  const bottomLimit = screenBottom - 120;
   const match = attr(tag, "bounds").match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
   if (!match) continue;
   const top = Number(match[2]);
   const bottom = Number(match[4]);
   const center = Math.round((top + bottom) / 2);
-  if (center < 760) {
+  if (center < topLimit) {
     console.log("above");
-  } else if (center > 2150 || bottom - top < 40) {
+  } else if (center > bottomLimit || bottom - top < 40) {
     console.log("below");
   } else {
     console.log("ok");
@@ -539,10 +572,10 @@ assert_window_any_text "window-chat-voice.xml" "Voice input is not available on 
 tap_tab_text "Settings"
 wait_for_window_text "window-settings.xml" "API connection"
 "$ADB" exec-out screencap -p > "$EVIDENCE_DIR/settings.png"
-swipe_to_text "Connect own agent"
-tap_text "Connect own agent"
-sleep 1
-wait_for_window_text "window-settings-agent.xml" "agt_android.md"
+tap_text_until_window_text "Connect own agent" "Own-agent link generated" "window-settings-agent-status.xml"
+swipe_to_text "$AGENT_SKILL_URL"
+dump_window "window-settings-agent.xml"
+assert_window_text "window-settings-agent.xml" "$AGENT_SKILL_URL"
 "$ADB" exec-out screencap -p > "$EVIDENCE_DIR/settings-agent.png"
 swipe_to_text "$API_BASE" "earlier"
 tap_edit_text "$API_BASE"
